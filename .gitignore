@@ -34,3 +34,9 @@ coverage
 
 # Misc
 *.pem
+
+# Claude Code local settings
+.claude/settings.local.json
+
+# Workspace config (local only)
+pnpm-workspace.yaml
