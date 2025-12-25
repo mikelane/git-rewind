@@ -17,6 +17,7 @@ import { getCached, setCache } from '@/lib/cache'
 import { downloadRewind } from '@/lib/export'
 import { compareYears, type YearComparison } from '@/lib/comparisons'
 import { comparisonLogger } from '@/lib/logger'
+import { formatFavoriteDays } from '@/lib/format-days'
 
 const CURRENT_YEAR = new Date().getFullYear()
 const AVAILABLE_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
@@ -239,9 +240,7 @@ export default function RewindPage() {
         busiestDay: stats.peakMoments.busiestDay,
         busiestWeek: { startDate: '', commits: 0 }, // Not calculated
         favoriteTimeOfDay: stats.peakMoments.favoriteTimeOfDay,
-        favoriteDayOfWeek: stats.peakMoments.favoriteDaysOfWeek?.length > 0
-          ? stats.peakMoments.favoriteDaysOfWeek.join(' & ')
-          : null,
+        favoriteDayOfWeek: formatFavoriteDays(stats.peakMoments.favoriteDaysOfWeek) || null,
         lateNightCommits: stats.peakMoments.lateNightCommits,
         weekendCommits: stats.peakMoments.weekendCommits,
         averageCommitsPerActiveDay: stats.peakMoments.averageCommitsPerActiveDay,

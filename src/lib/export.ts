@@ -4,6 +4,7 @@
 
 import type { YearStats } from './github'
 import { getLanguageColor } from './constants'
+import { formatFavoriteDays } from './format-days'
 
 function generateHTML(stats: YearStats): string {
   const langColor = getLanguageColor(stats.craft.primaryLanguage)
@@ -232,7 +233,7 @@ function generateHTML(stats: YearStats): string {
         Busiest month: <strong>${stats.rhythm.busiestMonth}</strong> with ${stats.rhythm.busiestMonthCount.toLocaleString()} contributions
       </div>
       <div class="highlight">
-        Peak coding time: <strong>${stats.peakMoments.favoriteTimeOfDay}</strong>${stats.peakMoments.favoriteDaysOfWeek?.length > 0 ? ` on <strong>${stats.peakMoments.favoriteDaysOfWeek.join(' & ')}s</strong>` : ''}
+        Peak coding time: <strong>${stats.peakMoments.favoriteTimeOfDay}</strong>${stats.peakMoments.favoriteDaysOfWeek?.length > 0 ? ` on <strong>${formatFavoriteDays(stats.peakMoments.favoriteDaysOfWeek)}</strong>` : ''}
       </div>
       ${stats.craft.topRepository ? `<div class="highlight">Top repo: <strong>${stats.craft.topRepository}</strong></div>` : ''}
     </div>

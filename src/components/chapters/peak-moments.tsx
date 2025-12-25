@@ -135,7 +135,7 @@ export function PeakMomentsChapter({
             </p>
             {data.favoriteDayOfWeek && (
               <p className="text-body-sm text-text-tertiary mt-4">
-                Most commits on <span className="text-text-secondary">{data.favoriteDayOfWeek}s</span>
+                Most active on <span className="text-text-secondary">{data.favoriteDayOfWeek}</span>
               </p>
             )}
           </div>
