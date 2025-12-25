@@ -305,7 +305,142 @@ describe('processContributions', () => {
 
     const result = processContributions(data, 2024)
 
-    expect(result.peakMoments.busiestDay.date).toBe('2024-07-22')
-    expect(result.peakMoments.busiestDay.commits).toBe(25)
+    expect(result.peakMoments.busiestDay?.date).toBe('2024-07-22')
+    expect(result.peakMoments.busiestDay?.commits).toBe(25)
+  })
+
+  describe('bot filtering in collaborator count', () => {
+    it('excludes bot accounts from unique collaborator count', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { nodes: [] },
+            pullRequestReviewContributions: {
+              nodes: [
+                { occurredAt: '2024-01-01', pullRequest: { title: 'PR 1', author: { login: 'realuser1' } } },
+                { occurredAt: '2024-01-02', pullRequest: { title: 'PR 2', author: { login: 'dependabot[bot]' } } },
+                { occurredAt: '2024-01-03', pullRequest: { title: 'PR 3', author: { login: 'renovate[bot]' } } },
+                { occurredAt: '2024-01-04', pullRequest: { title: 'PR 4', author: { login: 'github-actions[bot]' } } },
+                { occurredAt: '2024-01-05', pullRequest: { title: 'PR 5', author: { login: 'realuser2' } } },
+                { occurredAt: '2024-01-06', pullRequest: { title: 'PR 6', author: { login: 'codecov[bot]' } } },
+              ],
+            },
+            issueContributions: { nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      // Should only count realuser1 and realuser2 (2 humans), not the 4 bots
+      expect(result.collaboration.uniqueCollaborators).toBe(2)
+    })
+
+    it('excludes bots from top collaborators list', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { nodes: [] },
+            pullRequestReviewContributions: {
+              nodes: [
+                { occurredAt: '2024-01-01', pullRequest: { title: 'PR 1', author: { login: 'dependabot[bot]' } } },
+                { occurredAt: '2024-01-02', pullRequest: { title: 'PR 2', author: { login: 'dependabot[bot]' } } },
+                { occurredAt: '2024-01-03', pullRequest: { title: 'PR 3', author: { login: 'dependabot[bot]' } } },
+                { occurredAt: '2024-01-04', pullRequest: { title: 'PR 4', author: { login: 'realuser' } } },
+              ],
+            },
+            issueContributions: { nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      // Top collaborators should only include realuser, not dependabot
+      expect(result.collaboration.topCollaborators.length).toBe(1)
+      expect(result.collaboration.topCollaborators[0].username).toBe('realuser')
+    })
+  })
+
+  describe('empty contribution data handling', () => {
+    it('handles empty weeks array without throwing', () => {
+      const data = createMinimalResponse({ weeks: [] })
+
+      expect(() => processContributions(data, 2024)).not.toThrow()
+    })
+
+    it('returns null busiest day when no contribution days exist', () => {
+      const data = createMinimalResponse({ weeks: [] })
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.busiestDay).toBeNull()
+    })
+
+    it('returns null favorite day of week when no contributions exist', () => {
+      const data = createMinimalResponse({ weeks: [] })
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDayOfWeek).toBeNull()
+    })
+
+    it('returns null favorite day when all contribution counts are zero', () => {
+      const data = createMinimalResponse({
+        weeks: [
+          {
+            contributionDays: [
+              { date: '2024-01-01', contributionCount: 0, contributionLevel: 'NONE' },
+              { date: '2024-01-02', contributionCount: 0, contributionLevel: 'NONE' },
+              { date: '2024-01-03', contributionCount: 0, contributionLevel: 'NONE' },
+            ],
+          },
+        ],
+      })
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDayOfWeek).toBeNull()
+    })
   })
 })

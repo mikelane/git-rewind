@@ -13,6 +13,13 @@ const MONTHS = [
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
+const BOT_PATTERNS = ['[bot]', 'dependabot', 'renovate', 'github-actions', 'codecov']
+
+function isBot(username: string): boolean {
+  const lower = username.toLowerCase()
+  return BOT_PATTERNS.some(pattern => lower.includes(pattern))
+}
+
 function getColor(name: string, githubColor: string | null): string {
   return githubColor || getLanguageColor(name)
 }
@@ -175,14 +182,14 @@ export function processContributions(
   const issuesClosed = (contributions.issueContributions.nodes || [])
     .filter(i => i?.issue?.closedAt !== null).length
 
-  // Count unique collaborators from PR reviews
+  // Count unique collaborators from PR reviews, excluding bots
   const collaboratorCounts: Record<string, number> = {}
   for (const review of contributions.pullRequestReviewContributions.nodes || []) {
     if (!review?.pullRequest) {
       continue
     }
     const author = review.pullRequest.author?.login
-    if (author && author !== user.login) {
+    if (author && author !== user.login && !isBot(author)) {
       collaboratorCounts[author] = (collaboratorCounts[author] || 0) + 1
     }
   }
@@ -201,9 +208,11 @@ export function processContributions(
   const reviewStyle = reviewRatio > 1.5 ? 'thorough' : reviewRatio < 0.5 ? 'quick' : 'balanced'
 
   // Peak moments
-  const busiestDay = allDays.reduce((max, d) =>
-    d.contributionCount > max.contributionCount ? d : max
-  )
+  const busiestDay = allDays.length > 0
+    ? allDays.reduce((max, d) =>
+        d.contributionCount > max.contributionCount ? d : max
+      )
+    : null
 
   // Time of day analysis (we don't have exact times, so we'll skip this for now)
   // In a real implementation, you'd need commit timestamps from the REST API
@@ -215,8 +224,9 @@ export function processContributions(
     const dow = new Date(day.date).getDay()
     dayOfWeekCounts[dow] += day.contributionCount
   }
+  const totalDayContributions = dayOfWeekCounts.reduce((sum, count) => sum + count, 0)
   const favoriteDayIndex = dayOfWeekCounts.indexOf(Math.max(...dayOfWeekCounts))
-  const favoriteDayOfWeek = DAYS[favoriteDayIndex]
+  const favoriteDayOfWeek = totalDayContributions > 0 ? DAYS[favoriteDayIndex] : null
 
   // Weekend commits (Saturday = 6, Sunday = 0)
   const weekendCommits = dayOfWeekCounts[0] + dayOfWeekCounts[6]
@@ -280,11 +290,13 @@ export function processContributions(
       reviewStyle,
     },
     peakMoments: {
-      busiestDay: {
-        date: busiestDay.date,
-        formattedDate: formatDate(busiestDay.date),
-        commits: busiestDay.contributionCount,
-      },
+      busiestDay: busiestDay
+        ? {
+            date: busiestDay.date,
+            formattedDate: formatDate(busiestDay.date),
+            commits: busiestDay.contributionCount,
+          }
+        : null,
       favoriteTimeOfDay,
       favoriteDayOfWeek,
       lateNightCommits,

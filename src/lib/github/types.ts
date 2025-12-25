@@ -156,9 +156,9 @@ export interface YearStats {
       date: string
       formattedDate: string
       commits: number
-    }
+    } | null
     favoriteTimeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'
-    favoriteDayOfWeek: string
+    favoriteDayOfWeek: string | null
     lateNightCommits: number
     weekendCommits: number
     averageCommitsPerActiveDay: number
