@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { getCached, setCache } from '@/lib/cache'
 import { downloadRewind } from '@/lib/export'
 import { compareYears, type YearComparison } from '@/lib/comparisons'
+import { comparisonLogger } from '@/lib/logger'
 
 const CURRENT_YEAR = new Date().getFullYear()
 const AVAILABLE_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
@@ -24,7 +25,6 @@ const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Sum
 
 export default function RewindPage() {
   const [stats, setStats] = useState<YearStats | null>(null)
-  const [previousYearStats, setPreviousYearStats] = useState<YearStats | null>(null)
   const [comparison, setComparison] = useState<YearComparison | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -90,14 +90,12 @@ export default function RewindPage() {
     const cachedPrevious = getCached<YearStats>('stats', previousYear)
 
     if (cachedPrevious) {
-      console.log('[Comparison] Computing', year, 'vs', previousYear)
+      comparisonLogger.debug(`Computing ${year} vs ${previousYear}`)
       const yearComparison = compareYears(currentStats, cachedPrevious)
-      console.log('[Comparison] Insights:', yearComparison.narrativeInsights)
-      setPreviousYearStats(cachedPrevious)
+      comparisonLogger.debug('Insights:', yearComparison.narrativeInsights)
       setComparison(yearComparison)
     } else {
-      console.log('[Comparison] Previous year', previousYear, 'not cached yet')
-      setPreviousYearStats(null)
+      comparisonLogger.debug(`Previous year ${previousYear} not cached yet`)
       setComparison(null)
     }
   }, [])
@@ -106,7 +104,6 @@ export default function RewindPage() {
     setLoading(true)
     setError(null)
     setComparison(null)
-    setPreviousYearStats(null)
 
     try {
       // Fetch the selected year
@@ -127,7 +124,7 @@ export default function RewindPage() {
       otherYears.forEach(otherYear => {
         // Check if already cached before fetching
         if (!getCached<YearStats>('stats', otherYear)) {
-          console.log('[Background] Fetching', otherYear)
+          comparisonLogger.debug(`Background fetching ${otherYear}`)
           setLoadingYears(prev => new Set([...Array.from(prev), otherYear]))
           fetchYearStats(otherYear).then(otherStats => {
             setLoadingYears(prev => {
@@ -136,7 +133,7 @@ export default function RewindPage() {
               return next
             })
             if (otherStats) {
-              console.log('[Background] Cached', otherYear)
+              comparisonLogger.debug(`Cached ${otherYear}`)
               // If the background fetch completed the previous year, update comparison
               if (otherYear === year - 1) {
                 // Re-compute comparison now that previous year is available
@@ -146,8 +143,7 @@ export default function RewindPage() {
           })
         }
       })
-    } catch (err) {
-      console.error('Error fetching stats:', err)
+    } catch {
       setError('Failed to load your GitHub data. Please try again.')
     } finally {
       setLoading(false)

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { setSession } from '@/lib/auth'
+import { authLogger } from '@/lib/logger'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -56,8 +57,8 @@ export async function GET(request: NextRequest) {
   }
 
   try {
-    console.log('[Auth Callback] Exchanging code for token...')
-    console.log('[Auth Callback] Setup action:', setupAction, 'Installation ID:', installationId)
+    authLogger.debug('Exchanging code for token...')
+    authLogger.debug(`Setup action: ${setupAction}, Installation ID: ${installationId}`)
 
     // Exchange code for access token (GitHub App user-to-server token)
     const tokenResponse = await fetch(
@@ -78,12 +79,12 @@ export async function GET(request: NextRequest) {
 
     if (!tokenResponse.ok) {
       const text = await tokenResponse.text()
-      console.error('[Auth Callback] Token exchange failed:', tokenResponse.status, text)
+      authLogger.error(`Token exchange failed: ${tokenResponse.status}`, text)
       throw new Error('Failed to exchange code for token')
     }
 
     const tokenData = await tokenResponse.json()
-    console.log('[Auth Callback] Token response:', {
+    authLogger.debug('Token response received', {
       hasAccessToken: !!tokenData.access_token,
       tokenType: tokenData.token_type,
       scope: tokenData.scope,
@@ -96,7 +97,7 @@ export async function GET(request: NextRequest) {
 
     // Store access token in session
     await setSession(tokenData.access_token)
-    console.log('[Auth Callback] Session set successfully')
+    authLogger.debug('Session set successfully')
 
     // Store installation ID if provided
     if (installationId) {
@@ -107,15 +108,15 @@ export async function GET(request: NextRequest) {
         maxAge: 60 * 60 * 24 * 30, // 30 days
         path: '/',
       })
-      console.log('[Auth Callback] Installation ID stored:', installationId)
+      authLogger.debug(`Installation ID stored: ${installationId}`)
     }
 
     // Redirect to rewind page
     const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/rewind`
-    console.log('[Auth Callback] Redirecting to:', redirectUrl)
+    authLogger.debug(`Redirecting to: ${redirectUrl}`)
     return NextResponse.redirect(redirectUrl)
   } catch (err) {
-    console.error('[Auth Callback] Error:', err)
+    authLogger.error('Authentication error:', err)
     return NextResponse.redirect(
       `${process.env.NEXT_PUBLIC_APP_URL}/?error=auth_failed`
     )

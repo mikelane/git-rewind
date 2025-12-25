@@ -2,6 +2,8 @@
  * Simple localStorage cache with TTL support
  */
 
+import { cacheLogger } from './logger'
+
 interface CacheEntry<T> {
   data: T
   timestamp: number
@@ -23,35 +25,41 @@ function getTTL(year: number): number {
 }
 
 export function getCached<T>(prefix: string, year: number): T | null {
-  if (typeof window === 'undefined') return null
+  if (typeof window === 'undefined') {
+    return null
+  }
 
   try {
     const key = getCacheKey(prefix, year)
     const raw = localStorage.getItem(key)
 
-    if (!raw) return null
+    if (!raw) {
+      return null
+    }
 
     const entry: CacheEntry<T> = JSON.parse(raw)
     const now = Date.now()
 
     // Check if cache is still valid
     if (now - entry.timestamp < entry.ttl) {
-      console.log(`[Cache] HIT for ${key}, age: ${Math.round((now - entry.timestamp) / 1000)}s`)
+      cacheLogger.debug(`HIT for ${key}, age: ${Math.round((now - entry.timestamp) / 1000)}s`)
       return entry.data
     }
 
     // Cache expired, remove it
-    console.log(`[Cache] EXPIRED for ${key}`)
+    cacheLogger.debug(`EXPIRED for ${key}`)
     localStorage.removeItem(key)
     return null
   } catch (e) {
-    console.error('[Cache] Error reading cache:', e)
+    cacheLogger.error('Error reading cache:', e)
     return null
   }
 }
 
 export function setCache<T>(prefix: string, year: number, data: T): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined') {
+    return
+  }
 
   try {
     const key = getCacheKey(prefix, year)
@@ -64,14 +72,16 @@ export function setCache<T>(prefix: string, year: number, data: T): void {
     }
 
     localStorage.setItem(key, JSON.stringify(entry))
-    console.log(`[Cache] SET for ${key}, TTL: ${Math.round(ttl / 1000 / 60 / 60)}h`)
+    cacheLogger.debug(`SET for ${key}, TTL: ${Math.round(ttl / 1000 / 60 / 60)}h`)
   } catch (e) {
-    console.error('[Cache] Error writing cache:', e)
+    cacheLogger.error('Error writing cache:', e)
   }
 }
 
 export function clearCache(prefix?: string): void {
-  if (typeof window === 'undefined') return
+  if (typeof window === 'undefined') {
+    return
+  }
 
   try {
     const keysToRemove: string[] = []
@@ -86,8 +96,8 @@ export function clearCache(prefix?: string): void {
     }
 
     keysToRemove.forEach((key) => localStorage.removeItem(key))
-    console.log(`[Cache] CLEARED ${keysToRemove.length} entries`)
+    cacheLogger.debug(`CLEARED ${keysToRemove.length} entries`)
   } catch (e) {
-    console.error('[Cache] Error clearing cache:', e)
+    cacheLogger.error('Error clearing cache:', e)
   }
 }

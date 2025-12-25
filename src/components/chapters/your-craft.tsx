@@ -7,7 +7,6 @@ import {
   ChapterSubtitle,
   StatCallout,
   LanguageBar,
-  languageColors,
   type LanguageData,
   ChapterLoading,
   EmptyState,

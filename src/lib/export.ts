@@ -36,7 +36,6 @@ function getLanguageColor(language: string): string {
 
 function generateHTML(stats: YearStats): string {
   const langColor = getLanguageColor(stats.craft.primaryLanguage)
-  const generatedAt = new Date().toISOString()
 
   const dataCompletenessNote = stats.dataCompleteness.restrictedContributions > 0
     ? `<p class="data-note">${100 - stats.dataCompleteness.percentageAccessible}% of activity is in repos not accessible to Git Rewind.</p>`

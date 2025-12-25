@@ -1,5 +1,6 @@
 import { USER_CONTRIBUTIONS_QUERY, VIEWER_QUERY } from './queries'
 import type { GitHubContributionsResponse, GitHubUser } from './types'
+import { githubLogger } from '../logger'
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
 const GITHUB_REST_URL = 'https://api.github.com'
@@ -135,8 +136,8 @@ export class GitHubClient {
               `/repos/${repoFullName}/commits?author=${username}&since=${since}&until=${until}&per_page=100`
             )
             return commits.length
-          } catch {
-            // Individual month failures return 0, don't fail the whole request
+          } catch (error) {
+            githubLogger.warn(`Failed to fetch commits for ${repoFullName} (${since} to ${until})`, error)
             return 0
           }
         })
@@ -144,7 +145,8 @@ export class GitHubClient {
 
       // Sum all monthly commit counts
       return monthlyResults.reduce((sum, count) => sum + count, 0)
-    } catch {
+    } catch (error) {
+      githubLogger.warn(`Failed to get commit count for ${repoFullName}`, error)
       return 0
     }
   }
@@ -155,7 +157,8 @@ export class GitHubClient {
   async getRepoLanguages(repoFullName: string): Promise<Record<string, number>> {
     try {
       return await this.restGet<Record<string, number>>(`/repos/${repoFullName}/languages`)
-    } catch {
+    } catch (error) {
+      githubLogger.warn(`Failed to get languages for ${repoFullName}`, error)
       return {}
     }
   }
@@ -171,8 +174,8 @@ export class GitHubClient {
     const privateRepos = await this.getPrivateRepos(year)
     const reposToQuery = privateRepos.filter(r => !excludeRepos.includes(r.full_name))
 
-    console.log(`[GitHub] Found ${privateRepos.length} private repos with activity in ${year}, querying ${reposToQuery.length} not in GraphQL results`)
-    console.log('[GitHub] Active private repos:', privateRepos.map(r => r.full_name))
+    githubLogger.debug(`Found ${privateRepos.length} private repos with activity in ${year}, querying ${reposToQuery.length} not in GraphQL results`)
+    githubLogger.debug('Active private repos:', privateRepos.map(r => r.full_name))
 
     const repoStats: RepoCommitStats[] = []
     let totalCommits = 0
@@ -205,7 +208,7 @@ export class GitHubClient {
             languages: languageArray,
           })
           totalCommits += result.commits
-          console.log(`[GitHub] ${result.repo}: ${result.commits} commits, languages:`, Object.keys(result.languages).join(', '))
+          githubLogger.debug(`${result.repo}: ${result.commits} commits, languages: ${Object.keys(result.languages).join(', ')}`)
         }
       }
     }

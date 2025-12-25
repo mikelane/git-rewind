@@ -43,7 +43,9 @@ function getAllDays(data: GitHubContributionsResponse): ContributionDay[] {
 }
 
 export function calculateStreak(days: ContributionDay[], current: boolean): number {
-  if (days.length === 0) return 0
+  if (days.length === 0) {
+    return 0
+  }
 
   const sorted = [...days].sort((a, b) =>
     current ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)
@@ -69,7 +71,9 @@ export function calculateStreak(days: ContributionDay[], current: boolean): numb
         if (diff === 1) {
           streak++
         } else {
-          if (current) break // For current streak, stop at first gap
+          if (current) {
+            break // For current streak, stop at first gap
+          }
           streak = 1
         }
       }
@@ -129,7 +133,9 @@ export function processContributions(
 
   // Process GraphQL repos (public repos)
   for (const repo of contributions.commitContributionsByRepository || []) {
-    if (!repo?.repository || !repo?.contributions) continue
+    if (!repo?.repository || !repo?.contributions) {
+      continue
+    }
 
     if (repo.contributions.totalCount > topRepoCommits) {
       topRepoCommits = repo.contributions.totalCount
@@ -137,7 +143,9 @@ export function processContributions(
     }
 
     for (const edge of repo.repository.languages?.edges || []) {
-      if (!edge?.node?.name) continue
+      if (!edge?.node?.name) {
+        continue
+      }
       const name = edge.node.name
       if (!languageBytes[name]) {
         languageBytes[name] = { size: 0, color: getColor(name, edge.node.color) }
@@ -190,7 +198,9 @@ export function processContributions(
   // Count unique collaborators from PR reviews
   const collaboratorCounts: Record<string, number> = {}
   for (const review of contributions.pullRequestReviewContributions.nodes || []) {
-    if (!review?.pullRequest) continue
+    if (!review?.pullRequest) {
+      continue
+    }
     const author = review.pullRequest.author?.login
     if (author && author !== user.login) {
       collaboratorCounts[author] = (collaboratorCounts[author] || 0) + 1
