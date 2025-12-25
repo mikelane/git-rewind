@@ -23,14 +23,28 @@ function getAllDays(data: GitHubContributionsResponse): ContributionDay[] {
   return weeks.flatMap(week => week?.contributionDays || []).filter(Boolean)
 }
 
+function isValidDate(date: Date): boolean {
+  return !isNaN(date.getTime())
+}
+
 export function calculateStreak(days: ContributionDay[], current: boolean): number {
   if (days.length === 0) {
     return 0
   }
 
-  const sorted = [...days].sort((a, b) =>
-    current ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)
-  )
+  // Filter out days with invalid dates and parse dates properly for sorting
+  const validDays = days.filter(day => isValidDate(new Date(day.date)))
+
+  if (validDays.length === 0) {
+    return 0
+  }
+
+  // Sort by parsing dates properly instead of using localeCompare
+  const sorted = [...validDays].sort((a, b) => {
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    return current ? dateB - dateA : dateA - dateB
+  })
 
   // For current streak, if the most recent day has no contributions, streak is 0
   if (current && sorted[0].contributionCount === 0) {

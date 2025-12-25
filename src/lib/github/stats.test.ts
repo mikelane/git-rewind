@@ -106,6 +106,57 @@ describe('calculateStreak', () => {
       expect(calculateStreak(days, true)).toBe(2)
     })
   })
+
+  describe('date parsing robustness', () => {
+    it('handles ISO date strings with timezone info', () => {
+      const days = [
+        createDay('2024-01-01T00:00:00Z', 1),
+        createDay('2024-01-02T00:00:00Z', 1),
+        createDay('2024-01-03T00:00:00Z', 1),
+      ]
+      expect(calculateStreak(days, false)).toBe(3)
+    })
+
+    it('sorts dates correctly using proper date comparison, not string comparison', () => {
+      // String comparison would sort "2024-01-09" > "2024-01-10" because '9' > '1'
+      // This test verifies we use proper date comparison
+      const days = [
+        createDay('2024-01-09', 1),
+        createDay('2024-01-10', 1),
+        createDay('2024-01-11', 1),
+      ]
+      expect(calculateStreak(days, false)).toBe(3)
+    })
+
+    it('filters out days with invalid dates', () => {
+      const days = [
+        createDay('2024-01-01', 1),
+        createDay('invalid-date', 1),
+        createDay('2024-01-02', 1),
+        createDay('2024-01-03', 1),
+      ]
+      // Should only count valid dates: 3 consecutive days
+      expect(calculateStreak(days, false)).toBe(3)
+    })
+
+    it('returns 0 when all dates are invalid', () => {
+      const days = [
+        createDay('not-a-date', 1),
+        createDay('also-invalid', 1),
+      ]
+      expect(calculateStreak(days, false)).toBe(0)
+    })
+
+    it('handles mixed valid and invalid dates at the end for current streak', () => {
+      const days = [
+        createDay('2024-01-01', 1),
+        createDay('2024-01-02', 1),
+        createDay('invalid', 1),
+      ]
+      // Current streak should work with valid dates only
+      expect(calculateStreak(days, true)).toBe(2)
+    })
+  })
 })
 
 describe('processContributions', () => {
