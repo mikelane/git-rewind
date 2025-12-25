@@ -3,6 +3,11 @@ import { getSession } from '@/lib/auth'
 import { GitHubClient, processContributions } from '@/lib/github'
 import { statsLogger } from '@/lib/logger'
 import type { PrivateRepoStats } from '@/lib/github/client'
+import {
+  GitHubAuthError,
+  GitHubRateLimitError,
+  classifyGitHubError,
+} from '@/lib/errors'
 
 const GITHUB_FOUNDING_YEAR = 2008
 const CURRENT_YEAR = new Date().getFullYear()
@@ -83,6 +88,23 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(stats)
   } catch (err) {
     statsLogger.error('Stats fetch error:', err)
+
+    const classifiedError = classifyGitHubError(err)
+
+    if (classifiedError instanceof GitHubAuthError) {
+      return NextResponse.json(
+        { error: 'Authentication failed. Please re-authenticate.' },
+        { status: 401 }
+      )
+    }
+
+    if (classifiedError instanceof GitHubRateLimitError) {
+      return NextResponse.json(
+        { error: 'GitHub API rate limit exceeded. Please try again later.' },
+        { status: 429 }
+      )
+    }
+
     return NextResponse.json(
       { error: 'Failed to fetch GitHub data' },
       { status: 500 }
