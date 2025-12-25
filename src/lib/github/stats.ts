@@ -42,10 +42,17 @@ function getAllDays(data: GitHubContributionsResponse): ContributionDay[] {
   return weeks.flatMap(week => week?.contributionDays || []).filter(Boolean)
 }
 
-function calculateStreak(days: ContributionDay[], current: boolean): number {
+export function calculateStreak(days: ContributionDay[], current: boolean): number {
+  if (days.length === 0) return 0
+
   const sorted = [...days].sort((a, b) =>
     current ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)
   )
+
+  // For current streak, if the most recent day has no contributions, streak is 0
+  if (current && sorted[0].contributionCount === 0) {
+    return 0
+  }
 
   let streak = 0
   let maxStreak = 0
