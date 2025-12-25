@@ -40,3 +40,4 @@ coverage
 
 # Workspace config (local only)
 pnpm-workspace.yaml
+.worktrees/
