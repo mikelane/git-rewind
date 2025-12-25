@@ -199,7 +199,6 @@ export default function RewindPage() {
 
   const craftData = stats
     ? {
-        totalLines: 0, // Not available from GraphQL
         primaryLanguage: stats.craft.primaryLanguage,
         primaryLanguagePercentage: stats.craft.primaryLanguagePercentage,
         topRepository: stats.craft.topRepository ?? undefined,
@@ -246,7 +245,7 @@ export default function RewindPage() {
     : null
 
   return (
-    <main ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
+    <main id="main-content" ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
       {/* Year selector */}
       <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
         <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
