@@ -12,12 +12,14 @@ interface PrologueData {
 interface PrologueChapterProps {
   data: PrologueData | null
   isLoading?: boolean
+  isComparisonLoading?: boolean
   onContinue?: () => void
 }
 
 export function PrologueChapter({
   data,
   isLoading,
+  isComparisonLoading,
   onContinue,
 }: PrologueChapterProps) {
   if (isLoading || !data) {
@@ -81,7 +83,20 @@ export function PrologueChapter({
       </div>
 
       {/* Year-over-year insights - secondary, faded */}
-      {data.comparisonInsights && data.comparisonInsights.length > 0 && (
+      {isComparisonLoading ? (
+        <div
+          className={cn(
+            'mt-10 max-w-md opacity-0 animate-fade-in delay-700'
+          )}
+        >
+          <div className="flex flex-col gap-2 px-4 py-3 rounded-xl bg-bg-surface/50">
+            <div className="flex items-center justify-center gap-2 text-body-sm text-text-tertiary">
+              <span className="w-3 h-3 rounded-full border-2 border-accent/30 border-t-accent animate-spin" />
+              Loading comparison...
+            </div>
+          </div>
+        </div>
+      ) : data.comparisonInsights && data.comparisonInsights.length > 0 ? (
         <div
           className={cn(
             'mt-10 max-w-md opacity-0 animate-fade-in delay-700'
@@ -98,7 +113,7 @@ export function PrologueChapter({
             ))}
           </div>
         </div>
-      )}
+      ) : null}
 
       {/* Continue prompt */}
       <button

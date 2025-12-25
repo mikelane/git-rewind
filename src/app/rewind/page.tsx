@@ -26,6 +26,7 @@ const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Sum
 export default function RewindPage() {
   const [stats, setStats] = useState<YearStats | null>(null)
   const [comparison, setComparison] = useState<YearComparison | null>(null)
+  const [comparisonLoading, setComparisonLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
@@ -104,6 +105,7 @@ export default function RewindPage() {
     setLoading(true)
     setError(null)
     setComparison(null)
+    setComparisonLoading(false)
 
     try {
       // Fetch the selected year
@@ -115,8 +117,17 @@ export default function RewindPage() {
 
       setStats(currentStats)
 
-      // Only show comparison if previous year (year - 1) is already cached
-      computeComparison(currentStats, year)
+      // Check if previous year is already cached
+      const previousYear = year - 1
+      const cachedPrevious = getCached<YearStats>('stats', previousYear)
+
+      if (cachedPrevious) {
+        // Previous year cached - compute comparison immediately
+        computeComparison(currentStats, year)
+      } else {
+        // Previous year not cached - show loading state while we fetch it
+        setComparisonLoading(true)
+      }
 
       // Background fetch: load other years for future comparisons
       // This populates the cache so switching years is instant
@@ -137,8 +148,12 @@ export default function RewindPage() {
               // If the background fetch completed the previous year, update comparison
               if (otherYear === year - 1) {
                 // Re-compute comparison now that previous year is available
+                setComparisonLoading(false)
                 computeComparison(currentStats, year)
               }
+            } else if (otherYear === year - 1) {
+              // Failed to fetch previous year - stop showing loading
+              setComparisonLoading(false)
             }
           })
         }
@@ -289,6 +304,7 @@ export default function RewindPage() {
         <PrologueChapter
           data={prologueData}
           isLoading={loading}
+          isComparisonLoading={comparisonLoading}
           onContinue={() => scrollToChapter(1)}
         />
       </div>

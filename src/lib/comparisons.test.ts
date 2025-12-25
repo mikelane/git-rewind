@@ -16,7 +16,17 @@ describe('compareYears', () => {
     user: { username: 'testuser', name: 'Test', avatarUrl: 'url' },
     year: 2024,
     totalContributions: overrides.totalContributions ?? 100,
-    dataCompleteness: { restrictedContributions: 0, percentageAccessible: 100, reposAnalyzed: 5 },
+    dataCompleteness: {
+      restrictedContributions: 0,
+      percentageAccessible: 100,
+      reposAnalyzed: 5,
+      truncation: {
+        pullRequests: false,
+        pullRequestReviews: false,
+        issues: false,
+        repositories: false,
+      },
+    },
     rhythm: {
       activeDays: overrides.activeDays ?? 200,
       totalDays: 365,
