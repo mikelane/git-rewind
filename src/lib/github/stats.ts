@@ -252,6 +252,22 @@ export function processContributions(
     : 100
   const reposAnalyzed = (contributions.commitContributionsByRepository || []).length + privateReposFound
 
+  // Detect data truncation
+  const prNodes = contributions.pullRequestContributions.nodes || []
+  const prTotalCount = contributions.pullRequestContributions.totalCount ?? prNodes.length
+  const reviewNodes = contributions.pullRequestReviewContributions.nodes || []
+  const reviewTotalCount = contributions.pullRequestReviewContributions.totalCount ?? reviewNodes.length
+  const issueNodes = contributions.issueContributions.nodes || []
+  const issueTotalCount = contributions.issueContributions.totalCount ?? issueNodes.length
+  const repoCount = (contributions.commitContributionsByRepository || []).length
+
+  const truncation = {
+    pullRequests: prTotalCount > prNodes.length,
+    pullRequestReviews: reviewTotalCount > reviewNodes.length,
+    issues: issueTotalCount > issueNodes.length,
+    repositories: repoCount >= 100, // Max limit is 100, so at 100 we're likely truncated
+  }
+
   return {
     user: {
       username: user.login,
@@ -264,6 +280,7 @@ export function processContributions(
       restrictedContributions: stillRestrictedContributions,
       percentageAccessible,
       reposAnalyzed,
+      truncation,
     },
     rhythm: {
       activeDays,

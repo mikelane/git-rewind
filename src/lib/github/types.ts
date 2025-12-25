@@ -94,12 +94,15 @@ export interface ContributionsCollection {
     }
   }[]
   pullRequestContributions: {
+    totalCount: number
     nodes: PullRequestContribution[]
   }
   pullRequestReviewContributions: {
+    totalCount: number
     nodes: PullRequestReviewContribution[]
   }
   issueContributions: {
+    totalCount: number
     nodes: IssueContribution[]
   }
 }
@@ -126,6 +129,12 @@ export interface YearStats {
     restrictedContributions: number
     percentageAccessible: number
     reposAnalyzed: number
+    truncation: {
+      pullRequests: boolean
+      pullRequestReviews: boolean
+      issues: boolean
+      repositories: boolean
+    }
   }
   rhythm: {
     activeDays: number
