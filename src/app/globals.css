@@ -1,0 +1,119 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Font imports */
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap');
+
+@layer base {
+  html {
+    @apply scroll-smooth antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+
+  body {
+    @apply bg-bg-base text-text-primary font-body;
+  }
+
+  /* Focus styles */
+  :focus-visible {
+    @apply outline-none ring-2 ring-accent/50 ring-offset-2 ring-offset-bg-base;
+  }
+
+  /* Selection */
+  ::selection {
+    @apply bg-accent/30 text-text-primary;
+  }
+}
+
+@layer components {
+  /* Chapter container */
+  .chapter {
+    @apply min-h-screen w-full flex flex-col justify-center px-6 py-20;
+    @apply md:px-12 lg:px-20;
+  }
+
+  /* Narrative text wrapper */
+  .narrative {
+    @apply max-w-2xl;
+  }
+
+  /* Stat callout */
+  .stat-value {
+    @apply font-display text-display-xl text-text-primary tabular-nums;
+  }
+
+  .stat-unit {
+    @apply font-display text-display-md text-text-secondary ml-2;
+  }
+
+  .stat-context {
+    @apply text-lead text-text-secondary mt-4;
+  }
+
+  /* Language bar */
+  .language-bar {
+    @apply h-3 rounded-full overflow-hidden flex;
+  }
+
+  .language-segment {
+    @apply h-full transition-all duration-350 ease-out-expo;
+    @apply first:rounded-l-full last:rounded-r-full;
+  }
+
+  /* Skeleton loading */
+  .skeleton {
+    @apply bg-bg-elevated animate-pulse-subtle rounded;
+  }
+}
+
+@layer utilities {
+  /* Delay utilities for staggered animations */
+  .delay-100 { animation-delay: 100ms; }
+  .delay-200 { animation-delay: 200ms; }
+  .delay-300 { animation-delay: 300ms; }
+  .delay-400 { animation-delay: 400ms; }
+  .delay-500 { animation-delay: 500ms; }
+  .delay-600 { animation-delay: 600ms; }
+  .delay-700 { animation-delay: 700ms; }
+  .delay-800 { animation-delay: 800ms; }
+
+  /* Text balance for better line breaks */
+  .text-balance {
+    text-wrap: balance;
+  }
+}
+
+/* Accessibility: Reduced motion support */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Keep opacity for faded-in elements visible */
+  .opacity-0 {
+    opacity: 1 !important;
+  }
+
+  .animate-fade-in,
+  .animate-fade-in-up,
+  .animate-scale-in,
+  .animate-pulse,
+  .animate-pulse-subtle,
+  .animate-bounce {
+    animation: none !important;
+    opacity: 1 !important;
+    transform: none !important;
+  }
+}
+
+/* Skip to content link for keyboard navigation */
+.skip-to-content {
+  @apply sr-only focus:not-sr-only focus:absolute focus:top-4 focus:left-4 focus:z-[100];
+  @apply focus:px-4 focus:py-2 focus:bg-accent focus:text-text-inverse focus:rounded-lg;
+}

@@ -1,0 +1,215 @@
+import { USER_CONTRIBUTIONS_QUERY, VIEWER_QUERY } from './queries'
+import type { GitHubContributionsResponse, GitHubUser } from './types'
+
+const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
+const GITHUB_REST_URL = 'https://api.github.com'
+
+interface GraphQLResponse<T> {
+  data: T
+  errors?: { message: string }[]
+}
+
+export interface RepoCommitStats {
+  repo: string
+  commits: number
+  languages: { name: string; bytes: number }[]
+}
+
+export interface PrivateRepoStats {
+  repos: RepoCommitStats[]
+  totalCommits: number
+}
+
+export class GitHubClient {
+  private accessToken: string
+
+  constructor(accessToken: string) {
+    this.accessToken = accessToken
+  }
+
+  private async query<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+    const response = await fetch(GITHUB_GRAPHQL_URL, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ query, variables }),
+    })
+
+    if (!response.ok) {
+      throw new Error(`GitHub API error: ${response.status} ${response.statusText}`)
+    }
+
+    const json: GraphQLResponse<T> = await response.json()
+
+    if (json.errors?.length) {
+      throw new Error(`GraphQL error: ${json.errors[0].message}`)
+    }
+
+    return json.data
+  }
+
+  private async restGet<T>(path: string): Promise<T> {
+    const response = await fetch(`${GITHUB_REST_URL}${path}`, {
+      headers: {
+        'Authorization': `Bearer ${this.accessToken}`,
+        'Accept': 'application/vnd.github.v3+json',
+      },
+    })
+
+    if (!response.ok) {
+      throw new Error(`GitHub REST API error: ${response.status} ${response.statusText}`)
+    }
+
+    return response.json()
+  }
+
+  async getViewer(): Promise<GitHubUser> {
+    const data = await this.query<{ viewer: GitHubUser }>(VIEWER_QUERY)
+    return data.viewer
+  }
+
+  async getUserContributions(
+    username: string,
+    year: number
+  ): Promise<GitHubContributionsResponse> {
+    const from = new Date(year, 0, 1).toISOString()
+    const to = new Date(year, 11, 31, 23, 59, 59).toISOString()
+
+    return this.query<GitHubContributionsResponse>(USER_CONTRIBUTIONS_QUERY, {
+      username,
+      from,
+      to,
+    })
+  }
+
+  /**
+   * Get list of private repos the user has access to, optionally filtered by activity year
+   */
+  async getPrivateRepos(year?: number): Promise<{ full_name: string; private: boolean; pushed_at: string }[]> {
+    const repos = await this.restGet<{ full_name: string; private: boolean; pushed_at: string }[]>(
+      '/user/repos?visibility=private&per_page=100&affiliation=owner,collaborator&sort=pushed&direction=desc'
+    )
+
+    let filtered = repos.filter(r => r.private)
+
+    // If year specified, only include repos pushed to in that year
+    if (year) {
+      const yearStart = new Date(year, 0, 1)
+      const yearEnd = new Date(year, 11, 31, 23, 59, 59)
+
+      filtered = filtered.filter(r => {
+        const pushedAt = new Date(r.pushed_at)
+        return pushedAt >= yearStart && pushedAt <= yearEnd
+      })
+    }
+
+    return filtered
+  }
+
+  /**
+   * Count commits by the authenticated user in a specific repo for a year.
+   * Uses parallel time slicing (12 monthly requests) to avoid timeouts
+   * and overcome the 100-per-page limit.
+   */
+  async getRepoCommitCount(
+    repoFullName: string,
+    username: string,
+    year: number
+  ): Promise<number> {
+    try {
+      // Create 12 monthly date ranges
+      const monthlyRanges = Array.from({ length: 12 }, (_, month) => {
+        const since = new Date(year, month, 1).toISOString()
+        // Last day of month: day 0 of next month
+        const until = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
+        return { since, until }
+      })
+
+      // Fire all 12 requests in parallel
+      const monthlyResults = await Promise.all(
+        monthlyRanges.map(async ({ since, until }) => {
+          try {
+            const commits = await this.restGet<{ sha: string }[]>(
+              `/repos/${repoFullName}/commits?author=${username}&since=${since}&until=${until}&per_page=100`
+            )
+            return commits.length
+          } catch {
+            // Individual month failures return 0, don't fail the whole request
+            return 0
+          }
+        })
+      )
+
+      // Sum all monthly commit counts
+      return monthlyResults.reduce((sum, count) => sum + count, 0)
+    } catch {
+      return 0
+    }
+  }
+
+  /**
+   * Get language breakdown for a repo
+   */
+  async getRepoLanguages(repoFullName: string): Promise<Record<string, number>> {
+    try {
+      return await this.restGet<Record<string, number>>(`/repos/${repoFullName}/languages`)
+    } catch {
+      return {}
+    }
+  }
+
+  /**
+   * Get stats for private repos not captured by GraphQL
+   */
+  async getPrivateRepoStats(
+    username: string,
+    year: number,
+    excludeRepos: string[]
+  ): Promise<PrivateRepoStats> {
+    const privateRepos = await this.getPrivateRepos(year)
+    const reposToQuery = privateRepos.filter(r => !excludeRepos.includes(r.full_name))
+
+    console.log(`[GitHub] Found ${privateRepos.length} private repos with activity in ${year}, querying ${reposToQuery.length} not in GraphQL results`)
+    console.log('[GitHub] Active private repos:', privateRepos.map(r => r.full_name))
+
+    const repoStats: RepoCommitStats[] = []
+    let totalCommits = 0
+
+    // Query repos in batches of 10 in parallel for speed
+    const batchSize = 10
+    for (let i = 0; i < reposToQuery.length; i += batchSize) {
+      const batch = reposToQuery.slice(i, i + batchSize)
+
+      const results = await Promise.all(
+        batch.map(async (repo) => {
+          const [commits, languages] = await Promise.all([
+            this.getRepoCommitCount(repo.full_name, username, year),
+            this.getRepoLanguages(repo.full_name),
+          ])
+          return { repo: repo.full_name, commits, languages }
+        })
+      )
+
+      for (const result of results) {
+        if (result.commits > 0) {
+          const languageArray = Object.entries(result.languages).map(([name, bytes]) => ({
+            name,
+            bytes: bytes as number,
+          }))
+
+          repoStats.push({
+            repo: result.repo,
+            commits: result.commits,
+            languages: languageArray,
+          })
+          totalCommits += result.commits
+          console.log(`[GitHub] ${result.repo}: ${result.commits} commits, languages:`, Object.keys(result.languages).join(', '))
+        }
+      }
+    }
+
+    return { repos: repoStats, totalCommits }
+  }
+}
