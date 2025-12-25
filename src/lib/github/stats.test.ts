@@ -424,7 +424,7 @@ describe('processContributions', () => {
 
       const result = processContributions(data, 2024)
 
-      expect(result.peakMoments.favoriteDayOfWeek).toBeNull()
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
     })
 
     it('returns null favorite day when all contribution counts are zero', () => {
@@ -442,7 +442,7 @@ describe('processContributions', () => {
 
       const result = processContributions(data, 2024)
 
-      expect(result.peakMoments.favoriteDayOfWeek).toBeNull()
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
     })
   })
 
@@ -624,6 +624,121 @@ describe('processContributions', () => {
       expect(result.dataCompleteness.truncation.pullRequestReviews).toBe(true)
       expect(result.dataCompleteness.truncation.issues).toBe(true)
       expect(result.dataCompleteness.truncation.repositories).toBe(true)
+    })
+  })
+
+  describe('favorite day of week tie handling', () => {
+    it('returns single day when there is a clear winner', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Sunday
+                    { date: '2024-01-02', contributionCount: 10, contributionLevel: 'FIRST_QUARTILE' }, // Monday
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 10, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual(['Sunday'])
+    })
+
+    it('returns all tied days when multiple days have equal contributions', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 200,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Sunday
+                    { date: '2024-01-02', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Monday
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 10, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDaysOfWeek).toContain('Sunday')
+      expect(result.peakMoments.favoriteDaysOfWeek).toContain('Monday')
+      expect(result.peakMoments.favoriteDaysOfWeek).toHaveLength(2)
+    })
+
+    it('returns empty array when no contributions', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 0,
+            totalPullRequestContributions: 0,
+            totalPullRequestReviewContributions: 0,
+            totalIssueContributions: 0,
+            totalRepositoryContributions: 0,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 0,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 0, contributionLevel: 'NONE' },
+                    { date: '2024-01-02', contributionCount: 0, contributionLevel: 'NONE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 0, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 0, nodes: [] },
+            issueContributions: { totalCount: 0, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
     })
   })
 })

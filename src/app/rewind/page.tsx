@@ -239,7 +239,9 @@ export default function RewindPage() {
         busiestDay: stats.peakMoments.busiestDay,
         busiestWeek: { startDate: '', commits: 0 }, // Not calculated
         favoriteTimeOfDay: stats.peakMoments.favoriteTimeOfDay,
-        favoriteDayOfWeek: stats.peakMoments.favoriteDayOfWeek,
+        favoriteDayOfWeek: stats.peakMoments.favoriteDaysOfWeek.length > 0
+          ? stats.peakMoments.favoriteDaysOfWeek.join(' & ')
+          : null,
         lateNightCommits: stats.peakMoments.lateNightCommits,
         weekendCommits: stats.peakMoments.weekendCommits,
         averageCommitsPerActiveDay: stats.peakMoments.averageCommitsPerActiveDay,

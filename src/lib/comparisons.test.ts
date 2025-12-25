@@ -57,7 +57,7 @@ describe('compareYears', () => {
     peakMoments: {
       busiestDay: { date: '2024-03-15', formattedDate: 'March 15th', commits: 20 },
       favoriteTimeOfDay: 'evening',
-      favoriteDayOfWeek: 'Monday',
+      favoriteDaysOfWeek: ['Monday'],
       lateNightCommits: 10,
       weekendCommits: 30,
       averageCommitsPerActiveDay: 2.5,
