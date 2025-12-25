@@ -63,9 +63,15 @@ export function compareYears(
     narrativeInsights.push(`You matched last year's contribution count exactly.`)
   }
 
-  // Consistency
-  if (consistencyImproved && activeDaysDelta > ACTIVE_DAYS_DELTA_THRESHOLD) {
-    narrativeInsights.push(`You were more consistent, coding ${activeDaysDelta} more days.`)
+  // Consistency - show insight if consistency improved OR if active days delta exceeds threshold
+  if (consistencyImproved) {
+    if (activeDaysDelta > 0) {
+      narrativeInsights.push(`You were more consistent, coding ${activeDaysDelta} more days.`)
+    } else {
+      narrativeInsights.push(`You were more consistent this year.`)
+    }
+  } else if (activeDaysDelta > ACTIVE_DAYS_DELTA_THRESHOLD) {
+    narrativeInsights.push(`You coded ${activeDaysDelta} more days than last year.`)
   }
 
   // Streak

@@ -243,5 +243,18 @@ describe('compareYears', () => {
         result.narrativeInsights.some((i) => i.includes('shifted from TypeScript to Rust'))
       ).toBe(true)
     })
+
+    it('generates consistency insight when consistency improved even with small delta', () => {
+      // 153 active days this year (41.9% consistency)
+      // 150 active days last year (41.1% consistency)
+      // Delta is only 3 days (below threshold of 5), but consistency DID improve
+      const current = createMinimalStats({ activeDays: 153 })
+      const previous = createMinimalStats({ activeDays: 150 })
+
+      const result = compareYears(current, previous)
+
+      expect(result.consistencyImproved).toBe(true)
+      expect(result.narrativeInsights.some((i) => i.includes('more consistent'))).toBe(true)
+    })
   })
 })

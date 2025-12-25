@@ -1,6 +1,7 @@
 import { USER_CONTRIBUTIONS_QUERY, VIEWER_QUERY } from './queries'
 import type { GitHubContributionsResponse, GitHubUser } from './types'
 import { githubLogger } from '../logger'
+import { createYearDateRange, createMonthDateRange } from './date-utils'
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
 const GITHUB_REST_URL = 'https://api.github.com'
@@ -75,8 +76,7 @@ export class GitHubClient {
     username: string,
     year: number
   ): Promise<GitHubContributionsResponse> {
-    const from = new Date(year, 0, 1).toISOString()
-    const to = new Date(year, 11, 31, 23, 59, 59).toISOString()
+    const { from, to } = createYearDateRange(year)
 
     return this.query<GitHubContributionsResponse>(USER_CONTRIBUTIONS_QUERY, {
       username,
@@ -97,8 +97,9 @@ export class GitHubClient {
 
     // If year specified, only include repos pushed to in that year
     if (year) {
-      const yearStart = new Date(year, 0, 1)
-      const yearEnd = new Date(year, 11, 31, 23, 59, 59)
+      const { from, to } = createYearDateRange(year)
+      const yearStart = new Date(from)
+      const yearEnd = new Date(to)
 
       filtered = filtered.filter(r => {
         const pushedAt = new Date(r.pushed_at)
@@ -120,13 +121,10 @@ export class GitHubClient {
     year: number
   ): Promise<number> {
     try {
-      // Create 12 monthly date ranges
-      const monthlyRanges = Array.from({ length: 12 }, (_, month) => {
-        const since = new Date(year, month, 1).toISOString()
-        // Last day of month: day 0 of next month
-        const until = new Date(year, month + 1, 0, 23, 59, 59).toISOString()
-        return { since, until }
-      })
+      // Create 12 monthly date ranges using UTC dates
+      const monthlyRanges = Array.from({ length: 12 }, (_, month) =>
+        createMonthDateRange(year, month)
+      )
 
       // Fire all 12 requests in parallel
       const monthlyResults = await Promise.all(

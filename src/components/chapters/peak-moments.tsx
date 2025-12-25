@@ -16,13 +16,13 @@ export interface PeakMomentsData {
     date: string
     formattedDate: string
     commits: number
-  }
+  } | null
   busiestWeek: {
     startDate: string
     commits: number
   }
   favoriteTimeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'
-  favoriteDayOfWeek: string
+  favoriteDayOfWeek: string | null
   lateNightCommits: number
   weekendCommits: number
   averageCommitsPerActiveDay: number
@@ -123,24 +123,26 @@ export function PeakMomentsChapter({
       </ChapterSubtitle>
 
       {/* Busiest day - the hero moment with context */}
-      <div className="mt-16">
-        <StatCallout
-          value={data.busiestDay.commits}
-          unit="commits"
-          context={
-            <>
-              <span className="text-text-primary font-medium">
-                {data.busiestDay.formattedDate}
-              </span>{' '}
-              was your most prolific day.{' '}
-              <span className="text-text-tertiary">
-                {getPeakDayContext(data.busiestDay.date)}.
-              </span>
-            </>
-          }
-          delay={300}
-        />
-      </div>
+      {data.busiestDay && (
+        <div className="mt-16">
+          <StatCallout
+            value={data.busiestDay.commits}
+            unit="commits"
+            context={
+              <>
+                <span className="text-text-primary font-medium">
+                  {data.busiestDay.formattedDate}
+                </span>{' '}
+                was your most prolific day.{' '}
+                <span className="text-text-tertiary">
+                  {getPeakDayContext(data.busiestDay.date)}.
+                </span>
+              </>
+            }
+            delay={300}
+          />
+        </div>
+      )}
 
       {/* Time pattern card */}
       <div
@@ -160,9 +162,11 @@ export function PeakMomentsChapter({
             <p className="text-body text-text-secondary mt-1">
               {timeStyle.desc}
             </p>
-            <p className="text-body-sm text-text-tertiary mt-4">
-              Most commits on <span className="text-text-secondary">{data.favoriteDayOfWeek}s</span>
-            </p>
+            {data.favoriteDayOfWeek && (
+              <p className="text-body-sm text-text-tertiary mt-4">
+                Most commits on <span className="text-text-secondary">{data.favoriteDayOfWeek}s</span>
+              </p>
+            )}
           </div>
         </div>
       </div>
