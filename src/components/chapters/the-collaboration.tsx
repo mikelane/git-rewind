@@ -11,6 +11,7 @@ import {
   EmptyState,
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { isBot } from '@/lib/bot-detection'
 
 export interface CollaboratorData {
   username: string
@@ -162,7 +163,7 @@ export function TheCollaborationChapter({
           {data.topCollaborators.length > 1 && (
             <div className="flex flex-wrap gap-3">
               {data.topCollaborators.slice(1, 5).map((collaborator, index) => {
-                const isBot = collaborator.username.includes('bot') || collaborator.username === 'dependabot'
+                const isBotAccount = isBot(collaborator.username)
 
                 return (
                   <div
@@ -177,13 +178,13 @@ export function TheCollaborationChapter({
                     {/* Avatar placeholder */}
                     <div className={cn(
                       'w-8 h-8 rounded-full flex items-center justify-center',
-                      isBot ? 'bg-border-subtle' : 'bg-accent/20'
+                      isBotAccount ? 'bg-border-subtle' : 'bg-accent/20'
                     )}>
                       <span className={cn(
                         'text-caption font-medium',
-                        isBot ? 'text-text-tertiary' : 'text-accent'
+                        isBotAccount ? 'text-text-tertiary' : 'text-accent'
                       )}>
-                        {isBot ? '🤖' : collaborator.username.charAt(0).toUpperCase()}
+                        {isBotAccount ? '🤖' : collaborator.username.charAt(0).toUpperCase()}
                       </span>
                     </div>
                     <div>
