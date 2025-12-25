@@ -232,7 +232,7 @@ function generateHTML(stats: YearStats): string {
         Busiest month: <strong>${stats.rhythm.busiestMonth}</strong> with ${stats.rhythm.busiestMonthCount.toLocaleString()} contributions
       </div>
       <div class="highlight">
-        Peak coding time: <strong>${stats.peakMoments.favoriteTimeOfDay}</strong> on <strong>${stats.peakMoments.favoriteDayOfWeek}s</strong>
+        Peak coding time: <strong>${stats.peakMoments.favoriteTimeOfDay}</strong>${stats.peakMoments.favoriteDaysOfWeek.length > 0 ? ` on <strong>${stats.peakMoments.favoriteDaysOfWeek.join(' & ')}s</strong>` : ''}
       </div>
       ${stats.craft.topRepository ? `<div class="highlight">Top repo: <strong>${stats.craft.topRepository}</strong></div>` : ''}
     </div>

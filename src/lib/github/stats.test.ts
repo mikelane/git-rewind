@@ -143,9 +143,9 @@ describe('processContributions', () => {
           ],
         },
         commitContributionsByRepository: overrides.commitContributionsByRepository ?? [],
-        pullRequestContributions: { nodes: [] },
-        pullRequestReviewContributions: { nodes: [] },
-        issueContributions: { nodes: [] },
+        pullRequestContributions: { totalCount: overrides.pullRequestContributions ?? 10, nodes: [] },
+        pullRequestReviewContributions: { totalCount: overrides.pullRequestReviewContributions ?? 5, nodes: [] },
+        issueContributions: { totalCount: overrides.issueContributions ?? 3, nodes: [] },
       },
     },
   })
@@ -334,8 +334,9 @@ describe('processContributions', () => {
               ],
             },
             commitContributionsByRepository: [],
-            pullRequestContributions: { nodes: [] },
+            pullRequestContributions: { totalCount: 10, nodes: [] },
             pullRequestReviewContributions: {
+              totalCount: 6,
               nodes: [
                 { occurredAt: '2024-01-01', pullRequest: { title: 'PR 1', author: { login: 'realuser1' } } },
                 { occurredAt: '2024-01-02', pullRequest: { title: 'PR 2', author: { login: 'dependabot[bot]' } } },
@@ -345,7 +346,7 @@ describe('processContributions', () => {
                 { occurredAt: '2024-01-06', pullRequest: { title: 'PR 6', author: { login: 'codecov[bot]' } } },
               ],
             },
-            issueContributions: { nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
           },
         },
       }
@@ -380,8 +381,9 @@ describe('processContributions', () => {
               ],
             },
             commitContributionsByRepository: [],
-            pullRequestContributions: { nodes: [] },
+            pullRequestContributions: { totalCount: 10, nodes: [] },
             pullRequestReviewContributions: {
+              totalCount: 4,
               nodes: [
                 { occurredAt: '2024-01-01', pullRequest: { title: 'PR 1', author: { login: 'dependabot[bot]' } } },
                 { occurredAt: '2024-01-02', pullRequest: { title: 'PR 2', author: { login: 'dependabot[bot]' } } },
@@ -389,7 +391,7 @@ describe('processContributions', () => {
                 { occurredAt: '2024-01-04', pullRequest: { title: 'PR 4', author: { login: 'realuser' } } },
               ],
             },
-            issueContributions: { nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
           },
         },
       }
@@ -422,7 +424,7 @@ describe('processContributions', () => {
 
       const result = processContributions(data, 2024)
 
-      expect(result.peakMoments.favoriteDayOfWeek).toBeNull()
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
     })
 
     it('returns null favorite day when all contribution counts are zero', () => {
@@ -440,7 +442,438 @@ describe('processContributions', () => {
 
       const result = processContributions(data, 2024)
 
-      expect(result.peakMoments.favoriteDayOfWeek).toBeNull()
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
+    })
+  })
+
+  describe('data truncation detection', () => {
+    it('reports no truncation when data is within limits', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 50,
+            totalPullRequestReviewContributions: 30,
+            totalIssueContributions: 20,
+            totalRepositoryContributions: 10,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: Array(50).fill({
+              repository: {
+                name: 'repo',
+                nameWithOwner: 'user/repo',
+                primaryLanguage: null,
+                languages: { edges: [], totalSize: 0 },
+                defaultBranchRef: null,
+              },
+              contributions: { totalCount: 1 },
+            }),
+            pullRequestContributions: { totalCount: 50, nodes: Array(50).fill({ occurredAt: '2024-01-01', pullRequest: { title: 'PR', merged: false, repository: { nameWithOwner: 'user/repo' } } }) },
+            pullRequestReviewContributions: { totalCount: 30, nodes: Array(30).fill({ occurredAt: '2024-01-01', pullRequest: { title: 'PR', author: { login: 'user' } } }) },
+            issueContributions: { totalCount: 20, nodes: Array(20).fill({ occurredAt: '2024-01-01', issue: { title: 'Issue', closedAt: null } }) },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.dataCompleteness.truncation.pullRequests).toBe(false)
+      expect(result.dataCompleteness.truncation.pullRequestReviews).toBe(false)
+      expect(result.dataCompleteness.truncation.issues).toBe(false)
+      expect(result.dataCompleteness.truncation.repositories).toBe(false)
+    })
+
+    it('reports PR truncation when total exceeds fetched count', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 150,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 150, nodes: Array(100).fill({ occurredAt: '2024-01-01', pullRequest: { title: 'PR', merged: false, repository: { nameWithOwner: 'user/repo' } } }) },
+            pullRequestReviewContributions: { totalCount: 5, nodes: Array(5).fill({ occurredAt: '2024-01-01', pullRequest: { title: 'PR', author: { login: 'user' } } }) },
+            issueContributions: { totalCount: 3, nodes: Array(3).fill({ occurredAt: '2024-01-01', issue: { title: 'Issue', closedAt: null } }) },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.dataCompleteness.truncation.pullRequests).toBe(true)
+      expect(result.dataCompleteness.truncation.pullRequestReviews).toBe(false)
+      expect(result.dataCompleteness.truncation.issues).toBe(false)
+    })
+
+    it('reports repository truncation when at maximum limit of 100', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 150,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: Array(100).fill({
+              repository: {
+                name: 'repo',
+                nameWithOwner: 'user/repo',
+                primaryLanguage: null,
+                languages: { edges: [], totalSize: 0 },
+                defaultBranchRef: null,
+              },
+              contributions: { totalCount: 1 },
+            }),
+            pullRequestContributions: { totalCount: 10, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.dataCompleteness.truncation.repositories).toBe(true)
+    })
+
+    it('reports multiple truncations when several limits are exceeded', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 200,
+            totalPullRequestReviewContributions: 150,
+            totalIssueContributions: 120,
+            totalRepositoryContributions: 200,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 500,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: Array(100).fill({
+              repository: {
+                name: 'repo',
+                nameWithOwner: 'user/repo',
+                primaryLanguage: null,
+                languages: { edges: [], totalSize: 0 },
+                defaultBranchRef: null,
+              },
+              contributions: { totalCount: 1 },
+            }),
+            pullRequestContributions: { totalCount: 200, nodes: Array(100).fill({ occurredAt: '2024-01-01', pullRequest: { title: 'PR', merged: false, repository: { nameWithOwner: 'user/repo' } } }) },
+            pullRequestReviewContributions: { totalCount: 150, nodes: Array(100).fill({ occurredAt: '2024-01-01', pullRequest: { title: 'PR', author: { login: 'user' } } }) },
+            issueContributions: { totalCount: 120, nodes: Array(100).fill({ occurredAt: '2024-01-01', issue: { title: 'Issue', closedAt: null } }) },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.dataCompleteness.truncation.pullRequests).toBe(true)
+      expect(result.dataCompleteness.truncation.pullRequestReviews).toBe(true)
+      expect(result.dataCompleteness.truncation.issues).toBe(true)
+      expect(result.dataCompleteness.truncation.repositories).toBe(true)
+    })
+  })
+
+  describe('PR merge rate approximation', () => {
+    it('marks merge rate as not approximate when data is not truncated', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 50,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: {
+              totalCount: 50,
+              nodes: Array(50).fill({
+                occurredAt: '2024-01-01',
+                pullRequest: { title: 'PR', merged: true, repository: { nameWithOwner: 'user/repo' } },
+              }),
+            },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.collaboration.isMergeRateApproximate).toBe(false)
+    })
+
+    it('marks merge rate as approximate when PR data is truncated', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 150,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: {
+              totalCount: 150,
+              nodes: Array(100).fill({
+                occurredAt: '2024-01-01',
+                pullRequest: { title: 'PR', merged: true, repository: { nameWithOwner: 'user/repo' } },
+              }),
+            },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.collaboration.isMergeRateApproximate).toBe(true)
+    })
+
+    it('calculates merged count from available nodes when truncated', () => {
+      const nodes = [
+        ...Array(60).fill({
+          occurredAt: '2024-01-01',
+          pullRequest: { title: 'PR', merged: true, repository: { nameWithOwner: 'user/repo' } },
+        }),
+        ...Array(40).fill({
+          occurredAt: '2024-01-01',
+          pullRequest: { title: 'PR', merged: false, repository: { nameWithOwner: 'user/repo' } },
+        }),
+      ]
+
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 150,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 150, nodes },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      // Should count merged from available nodes (60 out of 100)
+      expect(result.collaboration.pullRequestsMerged).toBe(60)
+      expect(result.collaboration.isMergeRateApproximate).toBe(true)
+    })
+  })
+
+  describe('favorite day of week tie handling', () => {
+    it('returns single day when there is a clear winner', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 150,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Sunday
+                    { date: '2024-01-02', contributionCount: 10, contributionLevel: 'FIRST_QUARTILE' }, // Monday
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 10, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual(['Sunday'])
+    })
+
+    it('returns all tied days when multiple days have equal contributions', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 200,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Sunday
+                    { date: '2024-01-02', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Monday
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 10, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDaysOfWeek).toContain('Sunday')
+      expect(result.peakMoments.favoriteDaysOfWeek).toContain('Monday')
+      expect(result.peakMoments.favoriteDaysOfWeek).toHaveLength(2)
+    })
+
+    it('returns empty array when no contributions', () => {
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 0,
+            totalPullRequestContributions: 0,
+            totalPullRequestReviewContributions: 0,
+            totalIssueContributions: 0,
+            totalRepositoryContributions: 0,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 0,
+              weeks: [
+                {
+                  contributionDays: [
+                    { date: '2024-01-01', contributionCount: 0, contributionLevel: 'NONE' },
+                    { date: '2024-01-02', contributionCount: 0, contributionLevel: 'NONE' },
+                  ],
+                },
+              ],
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 0, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 0, nodes: [] },
+            issueContributions: { totalCount: 0, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
     })
   })
 })

@@ -16,7 +16,17 @@ describe('compareYears', () => {
     user: { username: 'testuser', name: 'Test', avatarUrl: 'url' },
     year: 2024,
     totalContributions: overrides.totalContributions ?? 100,
-    dataCompleteness: { restrictedContributions: 0, percentageAccessible: 100, reposAnalyzed: 5 },
+    dataCompleteness: {
+      restrictedContributions: 0,
+      percentageAccessible: 100,
+      reposAnalyzed: 5,
+      truncation: {
+        pullRequests: false,
+        pullRequestReviews: false,
+        issues: false,
+        repositories: false,
+      },
+    },
     rhythm: {
       activeDays: overrides.activeDays ?? 200,
       totalDays: 365,
@@ -43,11 +53,12 @@ describe('compareYears', () => {
       uniqueCollaborators: 8,
       topCollaborators: [],
       reviewStyle: 'balanced',
+      isMergeRateApproximate: false,
     },
     peakMoments: {
       busiestDay: { date: '2024-03-15', formattedDate: 'March 15th', commits: 20 },
       favoriteTimeOfDay: 'evening',
-      favoriteDayOfWeek: 'Monday',
+      favoriteDaysOfWeek: ['Monday'],
       lateNightCommits: 10,
       weekendCommits: 30,
       averageCommitsPerActiveDay: 2.5,

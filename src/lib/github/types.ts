@@ -94,12 +94,15 @@ export interface ContributionsCollection {
     }
   }[]
   pullRequestContributions: {
+    totalCount: number
     nodes: PullRequestContribution[]
   }
   pullRequestReviewContributions: {
+    totalCount: number
     nodes: PullRequestReviewContribution[]
   }
   issueContributions: {
+    totalCount: number
     nodes: IssueContribution[]
   }
 }
@@ -126,6 +129,12 @@ export interface YearStats {
     restrictedContributions: number
     percentageAccessible: number
     reposAnalyzed: number
+    truncation: {
+      pullRequests: boolean
+      pullRequestReviews: boolean
+      issues: boolean
+      repositories: boolean
+    }
   }
   rhythm: {
     activeDays: number
@@ -150,6 +159,7 @@ export interface YearStats {
     uniqueCollaborators: number
     topCollaborators: { username: string; interactions: number }[]
     reviewStyle: 'thorough' | 'quick' | 'balanced'
+    isMergeRateApproximate: boolean
   }
   peakMoments: {
     busiestDay: {
@@ -158,7 +168,7 @@ export interface YearStats {
       commits: number
     } | null
     favoriteTimeOfDay: 'morning' | 'afternoon' | 'evening' | 'night'
-    favoriteDayOfWeek: string | null
+    favoriteDaysOfWeek: string[]
     lateNightCommits: number
     weekendCommits: number
     averageCommitsPerActiveDay: number

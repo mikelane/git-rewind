@@ -50,6 +50,7 @@ export const USER_CONTRIBUTIONS_QUERY = `
         }
 
         pullRequestContributions(first: 100) {
+          totalCount
           nodes {
             occurredAt
             pullRequest {
@@ -63,6 +64,7 @@ export const USER_CONTRIBUTIONS_QUERY = `
         }
 
         pullRequestReviewContributions(first: 100) {
+          totalCount
           nodes {
             occurredAt
             pullRequest {
@@ -75,6 +77,7 @@ export const USER_CONTRIBUTIONS_QUERY = `
         }
 
         issueContributions(first: 100) {
+          totalCount
           nodes {
             occurredAt
             issue {

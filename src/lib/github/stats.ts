@@ -176,8 +176,10 @@ export function processContributions(
 
   // Collaboration stats
   const pullRequestsOpened = contributions.totalPullRequestContributions
-  const pullRequestsMerged = (contributions.pullRequestContributions.nodes || [])
-    .filter(pr => pr?.pullRequest?.merged).length
+  const prNodes = contributions.pullRequestContributions.nodes || []
+  const prTotalCount = contributions.pullRequestContributions.totalCount ?? prNodes.length
+  const pullRequestsMerged = prNodes.filter(pr => pr?.pullRequest?.merged).length
+  const isMergeRateApproximate = prTotalCount > prNodes.length
   const pullRequestsReviewed = contributions.totalPullRequestReviewContributions
   const issuesClosed = (contributions.issueContributions.nodes || [])
     .filter(i => i?.issue?.closedAt !== null).length
@@ -225,8 +227,13 @@ export function processContributions(
     dayOfWeekCounts[dow] += day.contributionCount
   }
   const totalDayContributions = dayOfWeekCounts.reduce((sum, count) => sum + count, 0)
-  const favoriteDayIndex = dayOfWeekCounts.indexOf(Math.max(...dayOfWeekCounts))
-  const favoriteDayOfWeek = totalDayContributions > 0 ? DAYS[favoriteDayIndex] : null
+  const maxDayCount = Math.max(...dayOfWeekCounts)
+  // Find all days with the maximum count (handles ties)
+  const favoriteDaysOfWeek = totalDayContributions > 0
+    ? dayOfWeekCounts
+        .map((count, index) => count === maxDayCount ? DAYS[index] : null)
+        .filter((day): day is string => day !== null)
+    : []
 
   // Weekend commits (Saturday = 6, Sunday = 0)
   const weekendCommits = dayOfWeekCounts[0] + dayOfWeekCounts[6]
@@ -252,6 +259,20 @@ export function processContributions(
     : 100
   const reposAnalyzed = (contributions.commitContributionsByRepository || []).length + privateReposFound
 
+  // Detect data truncation (prNodes and prTotalCount already calculated above)
+  const reviewNodes = contributions.pullRequestReviewContributions.nodes || []
+  const reviewTotalCount = contributions.pullRequestReviewContributions.totalCount ?? reviewNodes.length
+  const issueNodes = contributions.issueContributions.nodes || []
+  const issueTotalCount = contributions.issueContributions.totalCount ?? issueNodes.length
+  const repoCount = (contributions.commitContributionsByRepository || []).length
+
+  const truncation = {
+    pullRequests: prTotalCount > prNodes.length,
+    pullRequestReviews: reviewTotalCount > reviewNodes.length,
+    issues: issueTotalCount > issueNodes.length,
+    repositories: repoCount >= 100, // Max limit is 100, so at 100 we're likely truncated
+  }
+
   return {
     user: {
       username: user.login,
@@ -264,6 +285,7 @@ export function processContributions(
       restrictedContributions: stillRestrictedContributions,
       percentageAccessible,
       reposAnalyzed,
+      truncation,
     },
     rhythm: {
       activeDays,
@@ -288,6 +310,7 @@ export function processContributions(
       uniqueCollaborators,
       topCollaborators,
       reviewStyle,
+      isMergeRateApproximate,
     },
     peakMoments: {
       busiestDay: busiestDay
@@ -298,7 +321,7 @@ export function processContributions(
           }
         : null,
       favoriteTimeOfDay,
-      favoriteDayOfWeek,
+      favoriteDaysOfWeek,
       lateNightCommits,
       weekendCommits,
       averageCommitsPerActiveDay,

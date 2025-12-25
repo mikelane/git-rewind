@@ -30,8 +30,7 @@ export function createYearDateRange(year: number): YearDateRange {
  */
 export function createMonthDateRange(year: number, month: number): MonthDateRange {
   const since = new Date(Date.UTC(year, month, 1, 0, 0, 0)).toISOString()
-  // Day 0 of next month gives the last day of current month
-  const lastDayOfMonth = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
-  const until = new Date(Date.UTC(year, month, lastDayOfMonth, 23, 59, 59)).toISOString()
+  // Day 0 of next month = last day of current month, at 23:59:59
+  const until = new Date(Date.UTC(year, month + 1, 0, 23, 59, 59)).toISOString()
   return { since, until }
 }
