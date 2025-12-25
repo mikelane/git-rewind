@@ -1,6 +1,11 @@
 import { describe, it, expect } from 'vitest'
 import { processContributions, calculateStreak } from './stats'
-import type { GitHubContributionsResponse, ContributionDay } from './types'
+import type { GitHubContributionsResponse, ContributionDay, Repository } from './types'
+
+type CommitContributionByRepo = {
+  repository: Repository
+  contributions: { totalCount: number }
+}
 
 describe('calculateStreak', () => {
   const createDay = (date: string, count: number): ContributionDay => ({
@@ -108,7 +113,7 @@ describe('processContributions', () => {
     overrides: Partial<{
       totalContributions: number
       weeks: { contributionDays: ContributionDay[] }[]
-      commitContributionsByRepository: unknown[]
+      commitContributionsByRepository: CommitContributionByRepo[]
       pullRequestContributions: number
       pullRequestReviewContributions: number
       issueContributions: number

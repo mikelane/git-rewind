@@ -1,7 +1,9 @@
 'use client'
 
+import { useState, useCallback } from 'react'
 import { cn } from '@/lib/utils'
-import { languageColors } from '@/components/ui'
+import { getLanguageColor } from '@/lib/constants'
+import { shareHighlight } from '@/lib/share'
 
 export interface EpilogueData {
   year: number
@@ -23,7 +25,25 @@ interface EpilogueChapterProps {
   onDownload?: () => void
 }
 
+type ShareState = 'idle' | 'sharing' | 'shared' | 'copied'
+
 export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapterProps) {
+  const [shareState, setShareState] = useState<ShareState>('idle')
+
+  const handleShare = useCallback(async () => {
+    if (!data) {
+      return
+    }
+    setShareState('sharing')
+    const result = await shareHighlight(data)
+    if (result.success) {
+      setShareState(result.method === 'clipboard' ? 'copied' : 'shared')
+      setTimeout(() => setShareState('idle'), 2000)
+    } else {
+      setShareState('idle')
+    }
+  }, [data])
+
   if (isLoading || !data) {
     return (
       <section className="min-h-screen w-full flex flex-col items-center justify-center px-6">
@@ -32,7 +52,14 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
     )
   }
 
-  const languageColor = languageColors[data.topLanguage] || languageColors.Other
+  const languageColor = getLanguageColor(data.topLanguage)
+
+  const shareButtonText = {
+    idle: 'Share a Highlight',
+    sharing: 'Sharing...',
+    shared: 'Shared!',
+    copied: 'Copied to clipboard!',
+  }[shareState]
 
   return (
     <section className="min-h-screen w-full flex flex-col items-center justify-center px-6 py-20">
@@ -167,14 +194,18 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
         {/* Action buttons - better intent framing */}
         <div className="flex gap-3 mt-6 opacity-0 animate-fade-in delay-500">
           <button
+            onClick={handleShare}
+            disabled={shareState === 'sharing'}
             className={cn(
               'flex-1 py-3 px-6 rounded-xl',
               'bg-accent text-text-inverse font-medium',
               'hover:bg-accent-hover transition-colors',
-              'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base'
+              'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
+              shareState === 'sharing' && 'opacity-70 cursor-wait',
+              (shareState === 'shared' || shareState === 'copied') && 'bg-green-600 hover:bg-green-600'
             )}
           >
-            Share a Highlight
+            {shareButtonText}
           </button>
           <button
             onClick={onDownload}
