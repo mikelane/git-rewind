@@ -159,6 +159,7 @@ export interface YearStats {
     uniqueCollaborators: number
     topCollaborators: { username: string; interactions: number }[]
     reviewStyle: 'thorough' | 'quick' | 'balanced'
+    isMergeRateApproximate: boolean
   }
   peakMoments: {
     busiestDay: {

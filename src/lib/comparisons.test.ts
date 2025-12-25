@@ -53,6 +53,7 @@ describe('compareYears', () => {
       uniqueCollaborators: 8,
       topCollaborators: [],
       reviewStyle: 'balanced',
+      isMergeRateApproximate: false,
     },
     peakMoments: {
       busiestDay: { date: '2024-03-15', formattedDate: 'March 15th', commits: 20 },

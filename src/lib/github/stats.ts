@@ -176,8 +176,10 @@ export function processContributions(
 
   // Collaboration stats
   const pullRequestsOpened = contributions.totalPullRequestContributions
-  const pullRequestsMerged = (contributions.pullRequestContributions.nodes || [])
-    .filter(pr => pr?.pullRequest?.merged).length
+  const prNodes = contributions.pullRequestContributions.nodes || []
+  const prTotalCount = contributions.pullRequestContributions.totalCount ?? prNodes.length
+  const pullRequestsMerged = prNodes.filter(pr => pr?.pullRequest?.merged).length
+  const isMergeRateApproximate = prTotalCount > prNodes.length
   const pullRequestsReviewed = contributions.totalPullRequestReviewContributions
   const issuesClosed = (contributions.issueContributions.nodes || [])
     .filter(i => i?.issue?.closedAt !== null).length
@@ -257,9 +259,7 @@ export function processContributions(
     : 100
   const reposAnalyzed = (contributions.commitContributionsByRepository || []).length + privateReposFound
 
-  // Detect data truncation
-  const prNodes = contributions.pullRequestContributions.nodes || []
-  const prTotalCount = contributions.pullRequestContributions.totalCount ?? prNodes.length
+  // Detect data truncation (prNodes and prTotalCount already calculated above)
   const reviewNodes = contributions.pullRequestReviewContributions.nodes || []
   const reviewTotalCount = contributions.pullRequestReviewContributions.totalCount ?? reviewNodes.length
   const issueNodes = contributions.issueContributions.nodes || []
@@ -310,6 +310,7 @@ export function processContributions(
       uniqueCollaborators,
       topCollaborators,
       reviewStyle,
+      isMergeRateApproximate,
     },
     peakMoments: {
       busiestDay: busiestDay
