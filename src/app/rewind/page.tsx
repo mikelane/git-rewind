@@ -17,6 +17,7 @@ import { getCached, setCache } from '@/lib/cache'
 import { downloadRewind } from '@/lib/export'
 import { compareYears, type YearComparison } from '@/lib/comparisons'
 import { comparisonLogger } from '@/lib/logger'
+import { formatFavoriteDays } from '@/lib/format-days'
 
 const CURRENT_YEAR = new Date().getFullYear()
 const AVAILABLE_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
@@ -31,6 +32,14 @@ export default function RewindPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
   const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
+
+  // Ref to track current year for race condition prevention in background fetches
+  const currentYearRef = useRef(selectedYear)
+
+  // Keep ref in sync with selected year
+  useEffect(() => {
+    currentYearRef.current = selectedYear
+  }, [selectedYear])
 
   // Ref for the scroll container
   const mainRef = useRef<HTMLElement>(null)
@@ -143,15 +152,22 @@ export default function RewindPage() {
               next.delete(otherYear)
               return next
             })
+
+            // RACE CONDITION FIX: Check if user is still viewing the same year
+            // before updating comparison. If user switched years while background
+            // fetch was in progress, skip the comparison update.
+            const stillOnSameYear = currentYearRef.current === year
+
             if (otherStats) {
               comparisonLogger.debug(`Cached ${otherYear}`)
               // If the background fetch completed the previous year, update comparison
-              if (otherYear === year - 1) {
+              // Only if user is still on the same year (race condition prevention)
+              if (otherYear === year - 1 && stillOnSameYear) {
                 // Re-compute comparison now that previous year is available
                 setComparisonLoading(false)
                 computeComparison(currentStats, year)
               }
-            } else if (otherYear === year - 1) {
+            } else if (otherYear === year - 1 && stillOnSameYear) {
               // Failed to fetch previous year - stop showing loading
               setComparisonLoading(false)
             }
@@ -239,9 +255,7 @@ export default function RewindPage() {
         busiestDay: stats.peakMoments.busiestDay,
         busiestWeek: { startDate: '', commits: 0 }, // Not calculated
         favoriteTimeOfDay: stats.peakMoments.favoriteTimeOfDay,
-        favoriteDayOfWeek: stats.peakMoments.favoriteDaysOfWeek?.length > 0
-          ? stats.peakMoments.favoriteDaysOfWeek.join(' & ')
-          : null,
+        favoriteDayOfWeek: formatFavoriteDays(stats.peakMoments.favoriteDaysOfWeek) || null,
         lateNightCommits: stats.peakMoments.lateNightCommits,
         weekendCommits: stats.peakMoments.weekendCommits,
         averageCommitsPerActiveDay: stats.peakMoments.averageCommitsPerActiveDay,

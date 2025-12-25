@@ -10,6 +10,7 @@ import {
   EmptyState,
 } from '@/components/ui'
 import { cn } from '@/lib/utils'
+import { getPeakDayContext } from '@/lib/peak-day-context'
 
 export interface PeakMomentsData {
   busiestDay: {
@@ -57,36 +58,6 @@ function getTimeOfDayIcon(time: PeakMomentsData['favoriteTimeOfDay']) {
     case 'night':
       return '🌙'
   }
-}
-
-function getPeakDayContext(dateStr: string): string {
-  const date = new Date(dateStr)
-  const dayOfWeek = date.getDay()
-  const month = date.getMonth()
-  const dayOfMonth = date.getDate()
-
-  // Weekend check
-  const isWeekend = dayOfWeek === 0 || dayOfWeek === 6
-  const dayName = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'][dayOfWeek]
-
-  // Time of year context
-  if (month === 11 && dayOfMonth >= 15) {
-    return 'End-of-year sprint'
-  }
-  if (month === 0 && dayOfMonth <= 15) {
-    return 'New year momentum'
-  }
-  if (isWeekend) {
-    return `${dayName} deep work`
-  }
-  if (dayOfWeek === 1) {
-    return 'Monday motivation'
-  }
-  if (dayOfWeek === 5) {
-    return 'Friday push'
-  }
-
-  return 'Mid-week focus'
 }
 
 export function PeakMomentsChapter({
@@ -164,7 +135,7 @@ export function PeakMomentsChapter({
             </p>
             {data.favoriteDayOfWeek && (
               <p className="text-body-sm text-text-tertiary mt-4">
-                Most commits on <span className="text-text-secondary">{data.favoriteDayOfWeek}s</span>
+                Most active on <span className="text-text-secondary">{data.favoriteDayOfWeek}</span>
               </p>
             )}
           </div>

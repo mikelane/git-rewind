@@ -5,6 +5,7 @@ import type {
 } from './types'
 import type { PrivateRepoStats } from './client'
 import { getLanguageColor } from '../constants'
+import { isBot } from '../bot-detection'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -12,13 +13,6 @@ const MONTHS = [
 ]
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
-
-const BOT_PATTERNS = ['[bot]', 'dependabot', 'renovate', 'github-actions', 'codecov']
-
-function isBot(username: string): boolean {
-  const lower = username.toLowerCase()
-  return BOT_PATTERNS.some(pattern => lower.includes(pattern))
-}
 
 function getColor(name: string, githubColor: string | null): string {
   return githubColor || getLanguageColor(name)
