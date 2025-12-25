@@ -3,36 +3,7 @@
  */
 
 import type { YearStats } from './github'
-
-const languageColors: Record<string, string> = {
-  TypeScript: '#3178c6',
-  JavaScript: '#f1e05a',
-  Python: '#3572A5',
-  Rust: '#dea584',
-  Go: '#00ADD8',
-  Java: '#b07219',
-  Kotlin: '#A97BFF',
-  Ruby: '#701516',
-  Swift: '#F05138',
-  'C++': '#f34b7d',
-  C: '#555555',
-  'C#': '#239120',
-  PHP: '#4F5D95',
-  Shell: '#89e051',
-  Scala: '#c22d40',
-  Haskell: '#5e5086',
-  Elixir: '#6e4a7e',
-  Clojure: '#db5855',
-  Dart: '#00B4AB',
-  Vue: '#41b883',
-  CSS: '#563d7c',
-  HTML: '#e34c26',
-  Other: '#8b949e',
-}
-
-function getLanguageColor(language: string): string {
-  return languageColors[language] || languageColors.Other
-}
+import { getLanguageColor } from './constants'
 
 function generateHTML(stats: YearStats): string {
   const langColor = getLanguageColor(stats.craft.primaryLanguage)

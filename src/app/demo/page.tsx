@@ -14,7 +14,8 @@ import {
   type PeakMomentsData,
   type EpilogueData,
 } from '@/components/chapters'
-import { ProgressIndicator, languageColors } from '@/components/ui'
+import { ProgressIndicator } from '@/components/ui'
+import { getLanguageColor } from '@/lib/constants'
 import { useScrollProgress } from '@/hooks'
 import { cn } from '@/lib/utils'
 
@@ -49,16 +50,15 @@ const rhythmData: TheRhythmData = {
 }
 
 const craftData: YourCraftData = {
-  totalLines: 127453,
   primaryLanguage: 'TypeScript',
   primaryLanguagePercentage: 73,
   topRepository: 'octocat/hello-world',
   languages: [
-    { name: 'TypeScript', percentage: 73, color: languageColors.TypeScript },
-    { name: 'Python', percentage: 12, color: languageColors.Python },
-    { name: 'Rust', percentage: 8, color: languageColors.Rust },
-    { name: 'Go', percentage: 4, color: languageColors.Go },
-    { name: 'Shell', percentage: 3, color: languageColors.Shell },
+    { name: 'TypeScript', percentage: 73, color: getLanguageColor('TypeScript') },
+    { name: 'Python', percentage: 12, color: getLanguageColor('Python') },
+    { name: 'Rust', percentage: 8, color: getLanguageColor('Rust') },
+    { name: 'Go', percentage: 4, color: getLanguageColor('Go') },
+    { name: 'Shell', percentage: 3, color: getLanguageColor('Shell') },
   ],
 }
 

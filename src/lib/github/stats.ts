@@ -4,6 +4,7 @@ import type {
   ContributionDay,
 } from './types'
 import type { PrivateRepoStats } from './client'
+import { getLanguageColor } from '../constants'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -12,29 +13,8 @@ const MONTHS = [
 
 const DAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday']
 
-// Default language colors when GitHub doesn't provide one
-const DEFAULT_COLORS: Record<string, string> = {
-  TypeScript: '#3178C6',
-  JavaScript: '#F7DF1E',
-  Python: '#3776AB',
-  Rust: '#DEA584',
-  Go: '#00ADD8',
-  Java: '#ED8B00',
-  Ruby: '#CC342D',
-  Swift: '#F05138',
-  Kotlin: '#7F52FF',
-  'C++': '#F34B7D',
-  'C#': '#239120',
-  C: '#555555',
-  PHP: '#777BB4',
-  Shell: '#89E051',
-  HTML: '#E34C26',
-  CSS: '#1572B6',
-  Other: '#6B7280',
-}
-
 function getColor(name: string, githubColor: string | null): string {
-  return githubColor || DEFAULT_COLORS[name] || DEFAULT_COLORS.Other
+  return githubColor || getLanguageColor(name)
 }
 
 function getAllDays(data: GitHubContributionsResponse): ContributionDay[] {

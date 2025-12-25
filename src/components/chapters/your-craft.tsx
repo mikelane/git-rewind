@@ -13,7 +13,6 @@ import {
 } from '@/components/ui'
 
 export interface YourCraftData {
-  totalLines: number
   primaryLanguage: string
   primaryLanguagePercentage: number
   languages: LanguageData[]

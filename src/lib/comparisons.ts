@@ -4,6 +4,11 @@
 
 import type { YearStats } from './github'
 
+// Thresholds for generating narrative insights
+const ACTIVE_DAYS_DELTA_THRESHOLD = 5
+const STREAK_DELTA_THRESHOLD = 3
+const PR_DELTA_THRESHOLD = 3
+
 export interface YearComparison {
   contributionsDelta: number
   contributionsPercentChange: number
@@ -58,15 +63,15 @@ export function compareYears(
     narrativeInsights.push(`You matched last year's contribution count exactly.`)
   }
 
-  // Consistency (lowered threshold)
-  if (consistencyImproved && activeDaysDelta > 5) {
+  // Consistency
+  if (consistencyImproved && activeDaysDelta > ACTIVE_DAYS_DELTA_THRESHOLD) {
     narrativeInsights.push(`You were more consistent, coding ${activeDaysDelta} more days.`)
   }
 
-  // Streak (lowered threshold)
-  if (longestStreakDelta > 3) {
+  // Streak
+  if (longestStreakDelta > STREAK_DELTA_THRESHOLD) {
     narrativeInsights.push(`Your longest streak grew by ${longestStreakDelta} days.`)
-  } else if (longestStreakDelta < -3) {
+  } else if (longestStreakDelta < -STREAK_DELTA_THRESHOLD) {
     narrativeInsights.push(`Your longest streak was ${Math.abs(longestStreakDelta)} days shorter — but streaks aren't everything.`)
   }
 
@@ -79,8 +84,8 @@ export function compareYears(
     }
   }
 
-  // PRs (lowered threshold)
-  if (pullRequestsDelta > 3) {
+  // PRs
+  if (pullRequestsDelta > PR_DELTA_THRESHOLD) {
     narrativeInsights.push(`You merged ${pullRequestsDelta} more PRs than last year.`)
   }
 
