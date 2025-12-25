@@ -292,6 +292,80 @@ describe('processContributions', () => {
     expect(result.craft.languages[0].name).toBe('TypeScript')
   })
 
+  describe('language percentage rounding', () => {
+    it('does not lose all languages when all percentages round to zero', () => {
+      // If all languages are <0.5%, Math.round would make them all 0%
+      // and they would be filtered out, resulting in "Unknown"
+      // We need 300+ languages each with 1 byte for 1/300 = 0.33% to round to 0%
+      const edges = []
+      for (let i = 0; i < 300; i++) {
+        edges.push({ size: 1, node: { name: `Lang${i}`, color: '#111111' } })
+      }
+
+      const data = createMinimalResponse({
+        commitContributionsByRepository: [
+          {
+            repository: {
+              name: 'repo1',
+              nameWithOwner: 'user/repo1',
+              primaryLanguage: null,
+              languages: {
+                edges,
+                totalSize: 300,
+              },
+              defaultBranchRef: null,
+            },
+            contributions: { totalCount: 50 },
+          },
+        ],
+      })
+
+      const result = processContributions(data, 2024)
+
+      // BUG: Currently all languages round to 0% and get filtered out
+      // Should not fall back to "Unknown" - should keep languages with data
+      expect(result.craft.primaryLanguage).not.toBe('Unknown')
+      expect(result.craft.languages.length).toBeGreaterThan(0)
+    })
+
+    it('preserves the language with most bytes even when percentage rounds to zero', () => {
+      // Create 200+ tiny languages so each is < 0.5%
+      const edges = []
+      // Add one slightly larger language (2 bytes)
+      edges.push({ size: 2, node: { name: 'TopLang', color: '#111111' } })
+      // Add 199 more with 1 byte each = 201 total bytes
+      // TopLang = 2/201 = 0.99%, still rounds to 1% - this won't trigger the bug
+      // Need to make it smaller relative to total
+      for (let i = 0; i < 500; i++) {
+        edges.push({ size: 1, node: { name: `TinyLang${i}`, color: '#222222' } })
+      }
+      // Now TopLang = 2/502 = 0.4%, rounds to 0%
+
+      const data = createMinimalResponse({
+        commitContributionsByRepository: [
+          {
+            repository: {
+              name: 'repo1',
+              nameWithOwner: 'user/repo1',
+              primaryLanguage: null,
+              languages: {
+                edges,
+                totalSize: 502,
+              },
+              defaultBranchRef: null,
+            },
+            contributions: { totalCount: 10 },
+          },
+        ],
+      })
+
+      const result = processContributions(data, 2024)
+
+      // TopLang has the most bytes (2) so should be primary
+      expect(result.craft.primaryLanguage).toBe('TopLang')
+    })
+  })
+
   it('merges private repo stats when provided', () => {
     const data = createMinimalResponse({
       commitContributionsByRepository: [

@@ -172,12 +172,17 @@ export function processContributions(
   const languages = Object.entries(languageBytes)
     .map(([name, { size, color }]) => ({
       name,
+      size,
       percentage: totalBytes > 0 ? Math.round((size / totalBytes) * 100) : 0,
       color,
     }))
-    .filter(l => l.percentage > 0)
-    .sort((a, b) => b.percentage - a.percentage)
+    // Filter by actual data presence (size > 0) instead of rounded percentage
+    // This prevents losing all languages when they all round to 0%
+    .filter(l => l.size > 0)
+    .sort((a, b) => b.size - a.size)
     .slice(0, 6)
+    // Remove size from final output, keep just name/percentage/color
+    .map(({ name, percentage, color }) => ({ name, percentage, color }))
 
   const primaryLanguage = languages[0]?.name || 'Unknown'
   const primaryLanguagePercentage = languages[0]?.percentage || 0
