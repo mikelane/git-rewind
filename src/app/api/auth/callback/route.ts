@@ -13,8 +13,9 @@ export async function GET(request: NextRequest) {
   const installationId = searchParams.get('installation_id')
   const setupAction = searchParams.get('setup_action')
 
-  // If this is a post-installation redirect without code, redirect to login
-  if (setupAction === 'install' && !code) {
+  // If this is a post-installation/update redirect without code, redirect to login
+  // setup_action can be 'install' (new install) or 'update' (repos added/removed)
+  if ((setupAction === 'install' || setupAction === 'update') && !code) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/login`)
   }
 
