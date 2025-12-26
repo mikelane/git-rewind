@@ -136,7 +136,7 @@ export default function DemoPage() {
   }
 
   return (
-    <main ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-proximity">
+    <main ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
       {/* Demo banner */}
       <div
         className={cn(
