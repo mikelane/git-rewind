@@ -23,14 +23,28 @@ function getAllDays(data: GitHubContributionsResponse): ContributionDay[] {
   return weeks.flatMap(week => week?.contributionDays || []).filter(Boolean)
 }
 
+function isValidDate(date: Date): boolean {
+  return !isNaN(date.getTime())
+}
+
 export function calculateStreak(days: ContributionDay[], current: boolean): number {
   if (days.length === 0) {
     return 0
   }
 
-  const sorted = [...days].sort((a, b) =>
-    current ? b.date.localeCompare(a.date) : a.date.localeCompare(b.date)
-  )
+  // Filter out days with invalid dates and parse dates properly for sorting
+  const validDays = days.filter(day => isValidDate(new Date(day.date)))
+
+  if (validDays.length === 0) {
+    return 0
+  }
+
+  // Sort by parsing dates properly instead of using localeCompare
+  const sorted = [...validDays].sort((a, b) => {
+    const dateA = new Date(a.date).getTime()
+    const dateB = new Date(b.date).getTime()
+    return current ? dateB - dateA : dateA - dateB
+  })
 
   // For current streak, if the most recent day has no contributions, streak is 0
   if (current && sorted[0].contributionCount === 0) {
@@ -158,12 +172,17 @@ export function processContributions(
   const languages = Object.entries(languageBytes)
     .map(([name, { size, color }]) => ({
       name,
+      size,
       percentage: totalBytes > 0 ? Math.round((size / totalBytes) * 100) : 0,
       color,
     }))
-    .filter(l => l.percentage > 0)
-    .sort((a, b) => b.percentage - a.percentage)
+    // Filter by actual data presence (size > 0) instead of rounded percentage
+    // This prevents losing all languages when they all round to 0%
+    .filter(l => l.size > 0)
+    .sort((a, b) => b.size - a.size)
     .slice(0, 6)
+    // Remove size from final output, keep just name/percentage/color
+    .map(({ name, percentage, color }) => ({ name, percentage, color }))
 
   const primaryLanguage = languages[0]?.name || 'Unknown'
   const primaryLanguagePercentage = languages[0]?.percentage || 0

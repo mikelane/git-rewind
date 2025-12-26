@@ -6,7 +6,22 @@ import type { YearStats } from './github'
 import { getLanguageColor } from './constants'
 import { formatFavoriteDays } from './format-days'
 
-function generateHTML(stats: YearStats): string {
+/**
+ * Escape HTML special characters to prevent XSS attacks
+ */
+export function escapeHtml(str: string): string {
+  if (str === null || str === undefined) {
+    return ''
+  }
+  return String(str)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#039;')
+}
+
+export function generateHTML(stats: YearStats): string {
   const langColor = getLanguageColor(stats.craft.primaryLanguage)
 
   const dataCompletenessNote = stats.dataCompleteness.restrictedContributions > 0
@@ -18,7 +33,7 @@ function generateHTML(stats: YearStats): string {
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Git Rewind ${stats.year} - @${stats.user.username}</title>
+  <title>Git Rewind ${stats.year} - @${escapeHtml(stats.user.username)}</title>
   <style>
     * {
       margin: 0;
@@ -206,7 +221,7 @@ function generateHTML(stats: YearStats): string {
     <div class="header">
       <div class="brand">Git Rewind</div>
       <div class="year">${stats.year}</div>
-      <div class="username">@${stats.user.username}</div>
+      <div class="username">@${escapeHtml(stats.user.username)}</div>
     </div>
 
     <div class="stats-grid">
@@ -230,17 +245,17 @@ function generateHTML(stats: YearStats): string {
 
     <div class="highlights">
       <div class="highlight">
-        Busiest month: <strong>${stats.rhythm.busiestMonth}</strong> with ${stats.rhythm.busiestMonthCount.toLocaleString()} contributions
+        Busiest month: <strong>${escapeHtml(stats.rhythm.busiestMonth)}</strong> with ${stats.rhythm.busiestMonthCount.toLocaleString()} contributions
       </div>
       <div class="highlight">
-        Peak coding time: <strong>${stats.peakMoments.favoriteTimeOfDay}</strong>${stats.peakMoments.favoriteDaysOfWeek?.length > 0 ? ` on <strong>${formatFavoriteDays(stats.peakMoments.favoriteDaysOfWeek)}</strong>` : ''}
+        Peak coding time: <strong>${escapeHtml(stats.peakMoments.favoriteTimeOfDay)}</strong>${stats.peakMoments.favoriteDaysOfWeek?.length > 0 ? ` on <strong>${escapeHtml(formatFavoriteDays(stats.peakMoments.favoriteDaysOfWeek) || '')}</strong>` : ''}
       </div>
-      ${stats.craft.topRepository ? `<div class="highlight">Top repo: <strong>${stats.craft.topRepository}</strong></div>` : ''}
+      ${stats.craft.topRepository ? `<div class="highlight">Top repo: <strong>${escapeHtml(stats.craft.topRepository)}</strong></div>` : ''}
     </div>
 
     <div class="language-badge">
       <div class="language-dot"></div>
-      <span class="language-name">Powered by ${stats.craft.primaryLanguage}</span>
+      <span class="language-name">Powered by ${escapeHtml(stats.craft.primaryLanguage)}</span>
     </div>
 
     ${dataCompletenessNote}

@@ -96,6 +96,12 @@ export default function RewindPage() {
 
   // Compute comparison for current stats against previous year (if available)
   const computeComparison = useCallback((currentStats: YearStats, year: number) => {
+    // Race condition prevention: Don't update comparison if user has switched years
+    if (currentYearRef.current !== year) {
+      comparisonLogger.debug(`Skipping comparison for ${year} - user switched to ${currentYearRef.current}`)
+      return
+    }
+
     const previousYear = year - 1
     const cachedPrevious = getCached<YearStats>('stats', previousYear)
 

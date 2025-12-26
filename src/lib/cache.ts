@@ -10,18 +10,17 @@ interface CacheEntry<T> {
   ttl: number
 }
 
-const CURRENT_YEAR = new Date().getFullYear()
-
 // TTLs in milliseconds
-const TTL_CURRENT_YEAR = 24 * 60 * 60 * 1000 // 24 hours
-const TTL_PAST_YEAR = 365 * 24 * 60 * 60 * 1000 // 1 year (effectively forever)
+export const TTL_CURRENT_YEAR = 24 * 60 * 60 * 1000 // 24 hours
+export const TTL_PAST_YEAR = 365 * 24 * 60 * 60 * 1000 // 1 year (effectively forever)
 
 function getCacheKey(prefix: string, year: number): string {
   return `git-rewind:${prefix}:${year}`
 }
 
-function getTTL(year: number): number {
-  return year === CURRENT_YEAR ? TTL_CURRENT_YEAR : TTL_PAST_YEAR
+export function getTTL(year: number): number {
+  const currentYear = new Date().getFullYear()
+  return year === currentYear ? TTL_CURRENT_YEAR : TTL_PAST_YEAR
 }
 
 export function getCached<T>(prefix: string, year: number): T | null {

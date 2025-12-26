@@ -106,6 +106,57 @@ describe('calculateStreak', () => {
       expect(calculateStreak(days, true)).toBe(2)
     })
   })
+
+  describe('date parsing robustness', () => {
+    it('handles ISO date strings with timezone info', () => {
+      const days = [
+        createDay('2024-01-01T00:00:00Z', 1),
+        createDay('2024-01-02T00:00:00Z', 1),
+        createDay('2024-01-03T00:00:00Z', 1),
+      ]
+      expect(calculateStreak(days, false)).toBe(3)
+    })
+
+    it('sorts dates correctly using proper date comparison, not string comparison', () => {
+      // String comparison would sort "2024-01-09" > "2024-01-10" because '9' > '1'
+      // This test verifies we use proper date comparison
+      const days = [
+        createDay('2024-01-09', 1),
+        createDay('2024-01-10', 1),
+        createDay('2024-01-11', 1),
+      ]
+      expect(calculateStreak(days, false)).toBe(3)
+    })
+
+    it('filters out days with invalid dates', () => {
+      const days = [
+        createDay('2024-01-01', 1),
+        createDay('invalid-date', 1),
+        createDay('2024-01-02', 1),
+        createDay('2024-01-03', 1),
+      ]
+      // Should only count valid dates: 3 consecutive days
+      expect(calculateStreak(days, false)).toBe(3)
+    })
+
+    it('returns 0 when all dates are invalid', () => {
+      const days = [
+        createDay('not-a-date', 1),
+        createDay('also-invalid', 1),
+      ]
+      expect(calculateStreak(days, false)).toBe(0)
+    })
+
+    it('handles mixed valid and invalid dates at the end for current streak', () => {
+      const days = [
+        createDay('2024-01-01', 1),
+        createDay('2024-01-02', 1),
+        createDay('invalid', 1),
+      ]
+      // Current streak should work with valid dates only
+      expect(calculateStreak(days, true)).toBe(2)
+    })
+  })
 })
 
 describe('processContributions', () => {
@@ -239,6 +290,80 @@ describe('processContributions', () => {
     expect(result.craft.primaryLanguage).toBe('TypeScript')
     expect(result.craft.languages.length).toBeGreaterThan(0)
     expect(result.craft.languages[0].name).toBe('TypeScript')
+  })
+
+  describe('language percentage rounding', () => {
+    it('does not lose all languages when all percentages round to zero', () => {
+      // If all languages are <0.5%, Math.round would make them all 0%
+      // and they would be filtered out, resulting in "Unknown"
+      // We need 300+ languages each with 1 byte for 1/300 = 0.33% to round to 0%
+      const edges = []
+      for (let i = 0; i < 300; i++) {
+        edges.push({ size: 1, node: { name: `Lang${i}`, color: '#111111' } })
+      }
+
+      const data = createMinimalResponse({
+        commitContributionsByRepository: [
+          {
+            repository: {
+              name: 'repo1',
+              nameWithOwner: 'user/repo1',
+              primaryLanguage: null,
+              languages: {
+                edges,
+                totalSize: 300,
+              },
+              defaultBranchRef: null,
+            },
+            contributions: { totalCount: 50 },
+          },
+        ],
+      })
+
+      const result = processContributions(data, 2024)
+
+      // BUG: Currently all languages round to 0% and get filtered out
+      // Should not fall back to "Unknown" - should keep languages with data
+      expect(result.craft.primaryLanguage).not.toBe('Unknown')
+      expect(result.craft.languages.length).toBeGreaterThan(0)
+    })
+
+    it('preserves the language with most bytes even when percentage rounds to zero', () => {
+      // Create 200+ tiny languages so each is < 0.5%
+      const edges = []
+      // Add one slightly larger language (2 bytes)
+      edges.push({ size: 2, node: { name: 'TopLang', color: '#111111' } })
+      // Add 199 more with 1 byte each = 201 total bytes
+      // TopLang = 2/201 = 0.99%, still rounds to 1% - this won't trigger the bug
+      // Need to make it smaller relative to total
+      for (let i = 0; i < 500; i++) {
+        edges.push({ size: 1, node: { name: `TinyLang${i}`, color: '#222222' } })
+      }
+      // Now TopLang = 2/502 = 0.4%, rounds to 0%
+
+      const data = createMinimalResponse({
+        commitContributionsByRepository: [
+          {
+            repository: {
+              name: 'repo1',
+              nameWithOwner: 'user/repo1',
+              primaryLanguage: null,
+              languages: {
+                edges,
+                totalSize: 502,
+              },
+              defaultBranchRef: null,
+            },
+            contributions: { totalCount: 10 },
+          },
+        ],
+      })
+
+      const result = processContributions(data, 2024)
+
+      // TopLang has the most bytes (2) so should be primary
+      expect(result.craft.primaryLanguage).toBe('TopLang')
+    })
   })
 
   it('merges private repo stats when provided', () => {
