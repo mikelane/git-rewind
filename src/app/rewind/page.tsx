@@ -10,7 +10,7 @@ import {
   EpilogueChapter,
 } from '@/components/chapters'
 import { ProgressIndicator } from '@/components/ui'
-import { useScrollProgress } from '@/hooks'
+import { useScrollProgress, useKeyboardNavigation } from '@/hooks'
 import type { YearStats } from '@/lib/github'
 import { cn } from '@/lib/utils'
 import { getCached, setCache } from '@/lib/cache'
@@ -62,6 +62,9 @@ export default function RewindPage() {
   ]
 
   const { currentChapter } = useScrollProgress({ chapterRefs, containerRef: mainRef })
+
+  // Enable keyboard navigation (ArrowDown/Up, Space, PageDown/Up, Home/End)
+  useKeyboardNavigation({ chapterRefs, currentChapter })
 
   const scrollToChapter = (index: number) => {
     chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
