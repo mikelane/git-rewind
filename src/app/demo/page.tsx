@@ -19,6 +19,8 @@ import { getLanguageColor } from '@/lib/constants'
 import { useScrollProgress } from '@/hooks'
 import { cn } from '@/lib/utils'
 
+const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
+
 // Demo data representing a realistic year of coding
 const prologueData = {
   year: 2024,
@@ -107,6 +109,9 @@ const epilogueData: EpilogueData = {
 }
 
 export default function DemoPage() {
+  // Ref for the scroll container
+  const mainRef = useRef<HTMLElement>(null)
+
   // Refs for each chapter section
   const prologueRef = useRef<HTMLDivElement>(null)
   const rhythmRef = useRef<HTMLDivElement>(null)
@@ -124,14 +129,14 @@ export default function DemoPage() {
     epilogueRef,
   ]
 
-  const { currentChapter } = useScrollProgress({ chapterRefs })
+  const { currentChapter } = useScrollProgress({ chapterRefs, containerRef: mainRef })
 
   const scrollToChapter = (index: number) => {
     chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
   return (
-    <main className="relative">
+    <main ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
       {/* Demo banner */}
       <div
         className={cn(
@@ -157,10 +162,11 @@ export default function DemoPage() {
         totalChapters={6}
         currentChapter={currentChapter}
         onChapterClick={scrollToChapter}
+        chapterNames={CHAPTER_NAMES}
       />
 
       {/* Prologue */}
-      <div ref={prologueRef} className="pt-10">
+      <div ref={prologueRef} className="snap-start snap-always pt-10">
         <PrologueChapter
           data={prologueData}
           onContinue={() => scrollToChapter(1)}
@@ -168,27 +174,27 @@ export default function DemoPage() {
       </div>
 
       {/* Chapter 1: The Rhythm */}
-      <div ref={rhythmRef}>
+      <div ref={rhythmRef} className="snap-start snap-always">
         <TheRhythmChapter data={rhythmData} />
       </div>
 
       {/* Chapter 2: Your Craft */}
-      <div ref={craftRef}>
+      <div ref={craftRef} className="snap-start snap-always">
         <YourCraftChapter data={craftData} />
       </div>
 
       {/* Chapter 3: The Collaboration */}
-      <div ref={collaborationRef}>
+      <div ref={collaborationRef} className="snap-start snap-always">
         <TheCollaborationChapter data={collaborationData} />
       </div>
 
       {/* Chapter 4: Peak Moments */}
-      <div ref={peakRef}>
+      <div ref={peakRef} className="snap-start snap-always">
         <PeakMomentsChapter data={peakMomentsData} />
       </div>
 
       {/* Epilogue */}
-      <div ref={epilogueRef}>
+      <div ref={epilogueRef} className="snap-start snap-always">
         <EpilogueChapter data={epilogueData} />
       </div>
     </main>
