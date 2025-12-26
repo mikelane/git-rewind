@@ -1,22 +1,23 @@
-'use client'
-
-import { useSearchParams } from 'next/navigation'
 import { Suspense } from 'react'
 import { cn } from '@/lib/utils'
+import { ErrorMessage } from '@/components/error-message'
 
-function LandingContent() {
-  const searchParams = useSearchParams()
-  const error = searchParams.get('error')
+// GitHub App slug for installation URL
+const GITHUB_APP_SLUG = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'git-rewind'
 
+export default function LandingPage() {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-      {/* Logo / Title - THE visual anchor */}
+    <main
+      id="main-content"
+      className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
+    >
+      {/* Logo / Title - THE visual anchor - renders immediately for fast LCP */}
       <h1
         className={cn(
           'font-display text-text-primary',
           'text-6xl sm:text-8xl md:text-9xl',
           'tracking-tight',
-          'opacity-0 animate-fade-in-up'
+          'animate-fade-in-up'
         )}
       >
         Git Rewind
@@ -44,22 +45,10 @@ function LandingContent() {
         See your commits, streaks, and impact in one place.
       </p>
 
-      {/* Error message */}
-      {error && (
-        <div
-          className={cn(
-            'mt-8 px-4 py-3 rounded-xl',
-            'bg-red-500/10 border border-red-500/20',
-            'text-body-sm text-red-400'
-          )}
-        >
-          {error === 'invalid_state'
-            ? 'Session expired. Please try again.'
-            : error === 'auth_failed'
-            ? 'Authentication failed. Please try again.'
-            : 'Something went wrong. Please try again.'}
-        </div>
-      )}
+      {/* Error message - only client component, wrapped in Suspense */}
+      <Suspense fallback={null}>
+        <ErrorMessage />
+      </Suspense>
 
       {/* Dual CTAs - side by side */}
       <div
@@ -95,7 +84,7 @@ function LandingContent() {
 
         {/* Secondary CTA for new users */}
         <a
-          href={`https://github.com/apps/${process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'git-rewind'}/installations/new`}
+          href={`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`}
           className={cn(
             'inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl',
             'bg-transparent text-text-tertiary font-medium',
@@ -132,19 +121,18 @@ function LandingContent() {
           Built to respect your GitHub account
         </p>
         <div className="flex flex-wrap justify-center gap-6">
-          {[
-            { icon: '🔒', label: 'Read-only access' },
-            { icon: '🚫', label: 'No data stored' },
-            { icon: '⚡', label: 'Instant results' },
-          ].map((item) => (
-            <div
-              key={item.label}
-              className="flex items-center gap-2 text-body-sm text-text-tertiary"
-            >
-              <span>{item.icon}</span>
-              <span>{item.label}</span>
-            </div>
-          ))}
+          <div className="flex items-center gap-2 text-body-sm text-text-tertiary">
+            <span>🔒</span>
+            <span>Read-only access</span>
+          </div>
+          <div className="flex items-center gap-2 text-body-sm text-text-tertiary">
+            <span>🚫</span>
+            <span>No data stored</span>
+          </div>
+          <div className="flex items-center gap-2 text-body-sm text-text-tertiary">
+            <span>⚡</span>
+            <span>Instant results</span>
+          </div>
         </div>
       </div>
 
@@ -163,19 +151,5 @@ function LandingContent() {
         </p>
       </footer>
     </main>
-  )
-}
-
-export default function LandingPage() {
-  return (
-    <Suspense
-      fallback={
-        <main className="min-h-screen flex items-center justify-center">
-          <div className="skeleton h-8 w-32" />
-        </main>
-      }
-    >
-      <LandingContent />
-    </Suspense>
   )
 }
