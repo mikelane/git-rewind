@@ -16,7 +16,7 @@ import {
 } from '@/components/chapters'
 import { ProgressIndicator } from '@/components/ui'
 import { getLanguageColor } from '@/lib/constants'
-import { useScrollProgress } from '@/hooks'
+import { useScrollProgress, useKeyboardNavigation } from '@/hooks'
 import { cn } from '@/lib/utils'
 
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
@@ -130,6 +130,9 @@ export default function DemoPage() {
   ]
 
   const { currentChapter } = useScrollProgress({ chapterRefs, containerRef: mainRef })
+
+  // Enable keyboard navigation (ArrowDown/Up, Space, PageDown/Up, Home/End)
+  useKeyboardNavigation({ chapterRefs, currentChapter })
 
   const scrollToChapter = (index: number) => {
     chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
