@@ -242,7 +242,9 @@ export function processContributions(
   const totalDayContributions = dayOfWeekCounts.reduce((sum, count) => sum + count, 0)
   const maxDayCount = Math.max(...dayOfWeekCounts)
   // Find all days with the maximum count (handles ties)
-  const favoriteDaysOfWeek = totalDayContributions > 0
+  // Check both totalDayContributions > 0 AND maxDayCount > 0 to prevent returning
+  // all 7 days as "favorites" if somehow all dayOfWeekCounts are 0
+  const favoriteDaysOfWeek = totalDayContributions > 0 && maxDayCount > 0
     ? dayOfWeekCounts
         .map((count, index) => count === maxDayCount ? DAYS[index] : null)
         .filter((day): day is string => day !== null)

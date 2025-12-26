@@ -152,32 +152,46 @@ export default function RewindPage() {
         if (!getCached<YearStats>('stats', otherYear)) {
           comparisonLogger.debug(`Background fetching ${otherYear}`)
           setLoadingYears(prev => new Set([...Array.from(prev), otherYear]))
-          fetchYearStats(otherYear).then(otherStats => {
-            setLoadingYears(prev => {
-              const next = new Set(prev)
-              next.delete(otherYear)
-              return next
-            })
+          fetchYearStats(otherYear)
+            .then(otherStats => {
+              setLoadingYears(prev => {
+                const next = new Set(prev)
+                next.delete(otherYear)
+                return next
+              })
 
-            // RACE CONDITION FIX: Check if user is still viewing the same year
-            // before updating comparison. If user switched years while background
-            // fetch was in progress, skip the comparison update.
-            const stillOnSameYear = currentYearRef.current === year
+              // RACE CONDITION FIX: Check if user is still viewing the same year
+              // before updating comparison. If user switched years while background
+              // fetch was in progress, skip the comparison update.
+              const stillOnSameYear = currentYearRef.current === year
 
-            if (otherStats) {
-              comparisonLogger.debug(`Cached ${otherYear}`)
-              // If the background fetch completed the previous year, update comparison
-              // Only if user is still on the same year (race condition prevention)
-              if (otherYear === year - 1 && stillOnSameYear) {
-                // Re-compute comparison now that previous year is available
+              if (otherStats) {
+                comparisonLogger.debug(`Cached ${otherYear}`)
+                // If the background fetch completed the previous year, update comparison
+                // Only if user is still on the same year (race condition prevention)
+                if (otherYear === year - 1 && stillOnSameYear) {
+                  // Re-compute comparison now that previous year is available
+                  setComparisonLoading(false)
+                  computeComparison(currentStats, year)
+                }
+              } else if (otherYear === year - 1 && stillOnSameYear) {
+                // Failed to fetch previous year - stop showing loading
                 setComparisonLoading(false)
-                computeComparison(currentStats, year)
               }
-            } else if (otherYear === year - 1 && stillOnSameYear) {
-              // Failed to fetch previous year - stop showing loading
-              setComparisonLoading(false)
-            }
-          })
+            })
+            .catch(error => {
+              // Handle promise rejection to prevent unhandled rejection errors
+              comparisonLogger.error(`Failed to fetch ${otherYear}:`, error)
+              setLoadingYears(prev => {
+                const next = new Set(prev)
+                next.delete(otherYear)
+                return next
+              })
+              // If this was the previous year, stop showing comparison loading
+              if (otherYear === year - 1) {
+                setComparisonLoading(false)
+              }
+            })
         }
       })
     } catch {

@@ -1000,5 +1000,42 @@ describe('processContributions', () => {
 
       expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
     })
+
+    it('returns empty array when all day-of-week counts are zero even with contribution data', () => {
+      // Edge case: contributions exist but all happen on invalid dates that
+      // don't map to any day of week (defensive test for maxDayCount === 0)
+      // This tests that we don't return all 7 days when max is 0
+      const data: GitHubContributionsResponse = {
+        user: {
+          login: 'testuser',
+          name: 'Test User',
+          avatarUrl: 'https://github.com/testuser.png',
+          contributionsCollection: {
+            totalCommitContributions: 100,
+            totalPullRequestContributions: 10,
+            totalPullRequestReviewContributions: 5,
+            totalIssueContributions: 3,
+            totalRepositoryContributions: 2,
+            restrictedContributionsCount: 0,
+            contributionCalendar: {
+              totalContributions: 100,
+              weeks: [], // No weeks means no day-of-week data
+            },
+            commitContributionsByRepository: [],
+            pullRequestContributions: { totalCount: 10, nodes: [] },
+            pullRequestReviewContributions: { totalCount: 5, nodes: [] },
+            issueContributions: { totalCount: 3, nodes: [] },
+          },
+        },
+      }
+
+      const result = processContributions(data, 2024)
+
+      // Even though totalContributions is 100, with no weeks data,
+      // dayOfWeekCounts are all 0 and maxDayCount is 0
+      // We should NOT return all 7 days as "favorites"
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual([])
+      expect(result.peakMoments.favoriteDaysOfWeek.length).not.toBe(7)
+    })
   })
 })

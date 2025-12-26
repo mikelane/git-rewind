@@ -88,7 +88,8 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
         {/* Desktop: horizontal bar chart */}
         <div className="hidden sm:flex items-end gap-2 md:gap-3 h-48">
           {data.contributionsByMonth.map((month, index) => {
-            const maxCount = Math.max(...data.contributionsByMonth.map((m) => m.count))
+            // Use Math.max with 0 as first argument to prevent -Infinity on empty array
+            const maxCount = Math.max(0, ...data.contributionsByMonth.map((m) => m.count))
             const heightPercent = maxCount > 0 ? (month.count / maxCount) * 100 : 0
             const isBusiest = month.month === data.busiestMonth
 
@@ -136,7 +137,8 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
         {/* Mobile: compact grid with numbers */}
         <div className="sm:hidden grid grid-cols-4 gap-3">
           {data.contributionsByMonth.map((month) => {
-            const maxCount = Math.max(...data.contributionsByMonth.map((m) => m.count))
+            // Use Math.max with 0 as first argument to prevent -Infinity on empty array
+            const maxCount = Math.max(0, ...data.contributionsByMonth.map((m) => m.count))
             const intensity = maxCount > 0 ? month.count / maxCount : 0
             const isBusiest = month.month === data.busiestMonth
 
