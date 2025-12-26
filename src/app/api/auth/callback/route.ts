@@ -46,13 +46,18 @@ export async function GET(request: NextRequest) {
     // Verify state for standard OAuth flow
     const storedState = cookieStore.get('oauth-state')?.value
 
-    if (state !== storedState) {
+    // Explicitly check for undefined/missing cookie to prevent CSRF attacks
+    if (!storedState || state !== storedState) {
       return NextResponse.redirect(
         `${process.env.NEXT_PUBLIC_APP_URL}/?error=invalid_state`
       )
     }
+  }
 
-    // Clear state cookie
+  // Always clean up oauth-state cookie if it exists (prevents reuse/CSRF)
+  // This is done outside the if block to ensure cleanup even during install flow
+  const existingState = cookieStore.get('oauth-state')
+  if (existingState) {
     cookieStore.delete('oauth-state')
   }
 
