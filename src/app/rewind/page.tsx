@@ -296,7 +296,7 @@ export default function RewindPage() {
     : null
 
   return (
-    <main id="main-content" ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
+    <main id="main-content" ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-proximity">
       {/* Year selector */}
       <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
         <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
