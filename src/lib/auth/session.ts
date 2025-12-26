@@ -8,13 +8,13 @@ function getEncryptionKey(): Uint8Array {
   if (!secret) {
     throw new Error('SESSION_SECRET environment variable is required')
   }
+  if (secret.length < 32) {
+    throw new Error('SESSION_SECRET must be at least 32 characters for secure encryption')
+  }
   // jose requires a key of at least 256 bits (32 bytes) for HS256
-  // We pad/truncate to exactly 32 bytes
   const encoder = new TextEncoder()
   const keyBytes = encoder.encode(secret)
-  const key = new Uint8Array(32)
-  key.set(keyBytes.slice(0, 32))
-  return key
+  return keyBytes.slice(0, 32)
 }
 
 async function encryptToken(accessToken: string): Promise<string> {
