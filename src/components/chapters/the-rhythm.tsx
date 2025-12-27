@@ -99,13 +99,14 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
                 className="flex-1 flex flex-col items-center gap-3 group"
               >
                 {/* Bar container */}
-                <div className="w-full h-40 flex flex-col justify-end relative">
-                  {/* Count tooltip on hover */}
-                  <div className="absolute -top-8 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <span className="text-caption text-text-secondary tabular-nums whitespace-nowrap">
-                      {month.count.toLocaleString()}
-                    </span>
-                  </div>
+                <div className="w-full h-40 flex flex-col justify-end items-center">
+                  {/* Count label - positioned directly above bar */}
+                  <span className={cn(
+                    'text-caption tabular-nums whitespace-nowrap mb-2 transition-opacity',
+                    isBusiest ? 'text-text-secondary' : 'opacity-0 group-hover:opacity-100 text-text-secondary'
+                  )}>
+                    {month.count.toLocaleString()}
+                  </span>
                   {/* The bar */}
                   <div
                     className={cn(
