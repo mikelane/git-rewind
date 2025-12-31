@@ -9,7 +9,7 @@ import {
   ChapterLoading,
   EmptyState,
 } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { cn, pluralize } from '@/lib/utils'
 
 export interface ContributionDay {
   date: string
@@ -66,7 +66,7 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
       <div className="mt-16">
         <StatCallout
           value={data.activeDays}
-          unit="days"
+          unit={pluralize(data.activeDays, 'day', 'days')}
           context={
             <>
               You were active on{' '}
@@ -202,7 +202,7 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
           <span className="text-text-primary tabular-nums">
             {data.busiestMonthCount.toLocaleString()}
           </span>{' '}
-          contributions.
+          {pluralize(data.busiestMonthCount, 'contribution', 'contributions')}.
         </p>
       </div>
 

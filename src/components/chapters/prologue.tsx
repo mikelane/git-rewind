@@ -1,6 +1,6 @@
 'use client'
 
-import { cn } from '@/lib/utils'
+import { cn, pluralize } from '@/lib/utils'
 
 interface PrologueData {
   year: number
@@ -78,7 +78,7 @@ export function PrologueChapter({
           {data.totalContributions.toLocaleString()}
         </p>
         <p className="text-lead text-text-secondary mt-2">
-          contributions this year
+          {pluralize(data.totalContributions, 'contribution', 'contributions')} this year
         </p>
       </div>
 

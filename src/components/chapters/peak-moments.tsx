@@ -9,7 +9,7 @@ import {
   ChapterLoading,
   EmptyState,
 } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { cn, pluralize } from '@/lib/utils'
 import { getPeakDayContext } from '@/lib/peak-day-context'
 
 export interface PeakMomentsData {
@@ -98,7 +98,7 @@ export function PeakMomentsChapter({
         <div className="mt-16">
           <StatCallout
             value={data.busiestDay.commits}
-            unit="commits"
+            unit={pluralize(data.busiestDay.commits, 'commit', 'commits')}
             context={
               <>
                 <span className="text-text-primary font-medium">
@@ -155,7 +155,7 @@ export function PeakMomentsChapter({
               {data.lateNightCommits}
             </p>
             <p className="text-body-sm text-text-secondary mt-1">
-              late night commits
+              late night {pluralize(data.lateNightCommits, 'commit', 'commits')}
             </p>
             <p className="text-caption text-text-tertiary mt-2">
               After midnight, before 5am
@@ -169,7 +169,7 @@ export function PeakMomentsChapter({
               {data.weekendCommits}
             </p>
             <p className="text-body-sm text-text-secondary mt-1">
-              weekend commits
+              weekend {pluralize(data.weekendCommits, 'commit', 'commits')}
             </p>
             <p className="text-caption text-text-tertiary mt-2">
               Saturdays and Sundays

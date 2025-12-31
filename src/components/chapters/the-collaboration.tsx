@@ -10,7 +10,7 @@ import {
   ChapterLoading,
   EmptyState,
 } from '@/components/ui'
-import { cn } from '@/lib/utils'
+import { cn, pluralize } from '@/lib/utils'
 import { isBot } from '@/lib/bot-detection'
 
 export interface CollaboratorData {
@@ -85,7 +85,7 @@ export function TheCollaborationChapter({
         {hasReviews ? (
           <StatCallout
             value={data.pullRequestsReviewed}
-            unit="reviews"
+            unit={pluralize(data.pullRequestsReviewed, 'review', 'reviews')}
             context={
               <>
                 You reviewed{' '}
@@ -122,10 +122,10 @@ export function TheCollaborationChapter({
           'max-w-lg opacity-0 animate-fade-in delay-400'
         )}
       >
-        <StatRow label="PRs opened" value={data.pullRequestsOpened} />
-        <StatRow label="PRs merged" value={data.pullRequestsMerged} />
-        <StatRow label="Reviews given" value={data.pullRequestsReviewed} />
-        <StatRow label="Issues closed" value={data.issuesClosed} />
+        <StatRow label={pluralize(data.pullRequestsOpened, 'PR opened', 'PRs opened')} value={data.pullRequestsOpened} />
+        <StatRow label={pluralize(data.pullRequestsMerged, 'PR merged', 'PRs merged')} value={data.pullRequestsMerged} />
+        <StatRow label={pluralize(data.pullRequestsReviewed, 'Review given', 'Reviews given')} value={data.pullRequestsReviewed} />
+        <StatRow label={pluralize(data.issuesClosed, 'Issue closed', 'Issues closed')} value={data.issuesClosed} />
       </div>
 
       {/* Collaborators - highlight top collaborator */}

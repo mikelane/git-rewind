@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useCallback } from 'react'
-import { cn } from '@/lib/utils'
+import { cn, pluralize } from '@/lib/utils'
 import { getLanguageColor } from '@/lib/constants'
 import { shareHighlight } from '@/lib/share'
 
@@ -123,7 +123,7 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
                 {data.totalContributions.toLocaleString()}
               </p>
               <p className="text-caption text-text-tertiary mt-1">
-                contributions
+                {pluralize(data.totalContributions, 'contribution', 'contributions')}
               </p>
             </div>
             <div className="text-center">
@@ -131,7 +131,7 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
                 {data.activeDays}
               </p>
               <p className="text-caption text-text-tertiary mt-1">
-                active days
+                active {pluralize(data.activeDays, 'day', 'days')}
               </p>
             </div>
             <div className="text-center">
@@ -139,7 +139,7 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
                 {data.pullRequestsMerged}
               </p>
               <p className="text-caption text-text-tertiary mt-1">
-                PRs merged
+                {pluralize(data.pullRequestsMerged, 'PR merged', 'PRs merged')}
               </p>
             </div>
             <div className="text-center">
@@ -147,7 +147,7 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
                 {data.longestStreak}
               </p>
               <p className="text-caption text-text-tertiary mt-1">
-                day streak
+                {pluralize(data.longestStreak, 'day', 'day')} streak
               </p>
             </div>
           </div>
@@ -179,7 +179,7 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
                 </span>{' '}
                 is in repos we can&apos;t access.{' '}
                 <a
-                  href="https://github.com/settings/installations"
+                  href="https://github.com/apps/git-rewind/installations/select_target"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-accent hover:underline underline-offset-2"
