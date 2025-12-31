@@ -153,7 +153,7 @@ export function TheCollaborationChapter({
                   @{data.topCollaborators[0].username}
                 </p>
                 <p className="text-body-sm text-text-secondary">
-                  Your most frequent collaborator · {data.topCollaborators[0].interactions} interactions
+                  Your most frequent collaborator · {data.topCollaborators[0].interactions} {data.topCollaborators[0].interactions === 1 ? 'interaction' : 'interactions'}
                 </p>
               </div>
             </div>
