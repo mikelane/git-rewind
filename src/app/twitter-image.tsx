@@ -1,6 +1,5 @@
 import { ImageResponse } from 'next/og'
 
-export const runtime = 'edge'
 export const alt = 'Git Rewind - Your Year in Code'
 export const size = {
   width: 1200,
