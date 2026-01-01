@@ -22,7 +22,6 @@ export function generateShareText(data: EpilogueData): string {
 ${data.totalContributions.toLocaleString()} contributions
 ${data.activeDays} active days
 ${data.longestStreak} day streak
-Powered by ${data.topLanguage}
 
 Create yours at ${APP_URL}`
 }
