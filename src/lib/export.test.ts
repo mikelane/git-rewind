@@ -76,6 +76,7 @@ describe('generateHTML', () => {
       busiestMonth: 'January',
       busiestMonthCount: 30,
       contributionsByMonth: [],
+      contributionCalendar: [],
     },
     craft: {
       primaryLanguage: 'TypeScript',
@@ -170,6 +171,7 @@ describe('generateHTML', () => {
           busiestMonth: malicious,
           busiestMonthCount: 30,
           contributionsByMonth: [],
+          contributionCalendar: [],
         },
         craft: {
           primaryLanguage: malicious,

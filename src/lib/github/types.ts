@@ -144,6 +144,7 @@ export interface YearStats {
     busiestMonth: string
     busiestMonthCount: number
     contributionsByMonth: { month: string; count: number }[]
+    contributionCalendar: ContributionDay[]
   }
   craft: {
     primaryLanguage: string

@@ -311,6 +311,7 @@ export function processContributions(
       busiestMonth: busiestMonthData.month,
       busiestMonthCount: busiestMonthData.count,
       contributionsByMonth,
+      contributionCalendar: allDays,
     },
     craft: {
       primaryLanguage,

@@ -1038,4 +1038,62 @@ describe('processContributions', () => {
       expect(result.peakMoments.favoriteDaysOfWeek.length).not.toBe(7)
     })
   })
+
+  describe('contributionCalendar in rhythm output', () => {
+    it('includes daily contribution data in rhythm.contributionCalendar', () => {
+      const data = createMinimalResponse({
+        weeks: [
+          {
+            contributionDays: [
+              { date: '2024-01-01', contributionCount: 5, contributionLevel: 'FIRST_QUARTILE' },
+              { date: '2024-01-02', contributionCount: 3, contributionLevel: 'FIRST_QUARTILE' },
+              { date: '2024-01-03', contributionCount: 0, contributionLevel: 'NONE' },
+            ],
+          },
+        ],
+      })
+
+      const result = processContributions(data, 2024)
+
+      expect(result.rhythm.contributionCalendar).toBeDefined()
+      expect(result.rhythm.contributionCalendar).toHaveLength(3)
+      expect(result.rhythm.contributionCalendar[0]).toEqual({
+        date: '2024-01-01',
+        contributionCount: 5,
+        contributionLevel: 'FIRST_QUARTILE',
+      })
+    })
+
+    it('returns empty array when no contribution days exist', () => {
+      const data = createMinimalResponse({ weeks: [] })
+
+      const result = processContributions(data, 2024)
+
+      expect(result.rhythm.contributionCalendar).toEqual([])
+    })
+
+    it('flattens contribution days from multiple weeks', () => {
+      const data = createMinimalResponse({
+        weeks: [
+          {
+            contributionDays: [
+              { date: '2024-01-01', contributionCount: 1, contributionLevel: 'FIRST_QUARTILE' },
+              { date: '2024-01-02', contributionCount: 2, contributionLevel: 'FIRST_QUARTILE' },
+            ],
+          },
+          {
+            contributionDays: [
+              { date: '2024-01-08', contributionCount: 3, contributionLevel: 'FIRST_QUARTILE' },
+              { date: '2024-01-09', contributionCount: 4, contributionLevel: 'FIRST_QUARTILE' },
+            ],
+          },
+        ],
+      })
+
+      const result = processContributions(data, 2024)
+
+      expect(result.rhythm.contributionCalendar).toHaveLength(4)
+      expect(result.rhythm.contributionCalendar.map((d) => d.contributionCount)).toEqual([1, 2, 3, 4])
+    })
+  })
 })
