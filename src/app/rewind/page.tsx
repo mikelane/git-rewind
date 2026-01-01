@@ -350,12 +350,22 @@ export default function RewindPage() {
 
       {/* Chapter 1: The Rhythm */}
       <div ref={rhythmRef} className="snap-start snap-always">
-        <TheRhythmChapter data={rhythmData} isLoading={loading} />
+        <TheRhythmChapter
+          data={rhythmData}
+          isLoading={loading}
+          username={stats?.user.username}
+          year={stats?.year}
+        />
       </div>
 
       {/* Chapter 2: Your Craft */}
       <div ref={craftRef} className="snap-start snap-always">
-        <YourCraftChapter data={craftData} isLoading={loading} />
+        <YourCraftChapter
+          data={craftData}
+          isLoading={loading}
+          username={stats?.user.username}
+          year={stats?.year}
+        />
       </div>
 
       {/* Chapter 3: The Collaboration */}
@@ -365,7 +375,12 @@ export default function RewindPage() {
 
       {/* Chapter 4: Peak Moments */}
       <div ref={peakRef} className="snap-start snap-always">
-        <PeakMomentsChapter data={peakMomentsData} isLoading={loading} />
+        <PeakMomentsChapter
+          data={peakMomentsData}
+          isLoading={loading}
+          username={stats?.user.username}
+          year={stats?.year}
+        />
       </div>
 
       {/* Epilogue */}
