@@ -12,6 +12,12 @@ import {
 } from '@/components/ui'
 import { cn, pluralize } from '@/lib/utils'
 import { HighlightType, type StreakHighlight, type ActiveDaysHighlight } from '@/lib/highlight-share'
+import { type ActivityLevel, isLowActivity } from '@/lib/activity-level'
+import {
+  getRhythmSubtitle,
+  getRhythmActiveContext,
+  getRhythmTransition,
+} from '@/lib/chapter-copy'
 
 export interface ContributionDay {
   date: string
@@ -34,9 +40,16 @@ interface TheRhythmChapterProps {
   isLoading?: boolean
   username?: string
   year?: number
+  activityLevel?: ActivityLevel
 }
 
-export function TheRhythmChapter({ data, isLoading, username, year }: TheRhythmChapterProps) {
+export function TheRhythmChapter({
+  data,
+  isLoading,
+  username,
+  year,
+  activityLevel = 'typical',
+}: TheRhythmChapterProps) {
   const streakHighlight: StreakHighlight | null = data && username && year ? {
     type: HighlightType.Streak,
     username,
@@ -65,20 +78,22 @@ export function TheRhythmChapter({ data, isLoading, username, year }: TheRhythmC
       <Chapter>
         <EmptyState
           title="No activity data"
-          description="We couldn't find contribution data for this period. Your journey awaits."
+          description="No contribution data found for this period."
         />
       </Chapter>
     )
   }
 
   const consistencyPercentage = Math.round((data.activeDays / data.totalDays) * 100)
+  const activeContext = getRhythmActiveContext(activityLevel, consistencyPercentage)
+  const transition = getRhythmTransition(activityLevel)
 
   return (
     <Chapter>
       <ChapterLabel>Chapter One</ChapterLabel>
       <ChapterTitle>The Rhythm</ChapterTitle>
       <ChapterSubtitle>
-        Code is a practice. These are the days you showed up.
+        {getRhythmSubtitle(activityLevel)}
       </ChapterSubtitle>
 
       {/* Primary stat */}
@@ -86,15 +101,15 @@ export function TheRhythmChapter({ data, isLoading, username, year }: TheRhythmC
         <StatCallout
           value={data.activeDays}
           unit={pluralize(data.activeDays, 'day', 'days')}
-          context={
+          context={activeContext ? (
             <>
               You were active on{' '}
               <span className="text-text-primary font-medium">
                 {consistencyPercentage}%
               </span>{' '}
-              of the year. Consistency compounds.
+              of the year.{!isLowActivity(activityLevel) && ' Consistency compounds.'}
             </>
-          }
+          ) : undefined}
           delay={300}
         />
         {activeDaysHighlight && (
@@ -235,10 +250,12 @@ export function TheRhythmChapter({ data, isLoading, username, year }: TheRhythmC
         </p>
       </div>
 
-      {/* Transition to next chapter */}
-      <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-700">
-        Showing up is just the start. Let&apos;s see what you built.
-      </p>
+      {/* Transition to next chapter - only show for typical/high activity */}
+      {transition && (
+        <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-700">
+          {transition}
+        </p>
+      )}
     </Chapter>
   )
 }

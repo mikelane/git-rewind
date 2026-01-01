@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback } from 'react'
+import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
 import {
   PrologueChapter,
   TheRhythmChapter,
@@ -18,6 +18,7 @@ import { downloadRewind } from '@/lib/export'
 import { compareYears, type YearComparison } from '@/lib/comparisons'
 import { comparisonLogger } from '@/lib/logger'
 import { formatFavoriteDays } from '@/lib/format-days'
+import { classifyActivityLevel } from '@/lib/activity-level'
 
 const CURRENT_YEAR = new Date().getFullYear()
 const AVAILABLE_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
@@ -208,6 +209,17 @@ export default function RewindPage() {
     fetchStats(selectedYear)
   }, [selectedYear, fetchStats])
 
+  // Compute activity level based on stats
+  const activityLevel = useMemo(() => {
+    if (!stats) {
+      return 'typical'
+    }
+    return classifyActivityLevel({
+      totalContributions: stats.totalContributions,
+      activeDays: stats.rhythm.activeDays,
+    })
+  }, [stats])
+
   if (error) {
     return (
       <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
@@ -355,6 +367,7 @@ export default function RewindPage() {
           isLoading={loading}
           username={stats?.user.username}
           year={stats?.year}
+          activityLevel={activityLevel}
         />
       </div>
 
@@ -365,12 +378,17 @@ export default function RewindPage() {
           isLoading={loading}
           username={stats?.user.username}
           year={stats?.year}
+          activityLevel={activityLevel}
         />
       </div>
 
       {/* Chapter 3: The Collaboration */}
       <div ref={collaborationRef} className="snap-start snap-always">
-        <TheCollaborationChapter data={collaborationData} isLoading={loading} />
+        <TheCollaborationChapter
+          data={collaborationData}
+          isLoading={loading}
+          activityLevel={activityLevel}
+        />
       </div>
 
       {/* Chapter 4: Peak Moments */}
@@ -380,6 +398,7 @@ export default function RewindPage() {
           isLoading={loading}
           username={stats?.user.username}
           year={stats?.year}
+          activityLevel={activityLevel}
         />
       </div>
 
@@ -389,6 +408,7 @@ export default function RewindPage() {
           data={epilogueData}
           isLoading={loading}
           onDownload={stats ? () => downloadRewind(stats) : undefined}
+          activityLevel={activityLevel}
         />
       </div>
     </main>

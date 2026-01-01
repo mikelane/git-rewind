@@ -13,6 +13,12 @@ import {
 import { cn, pluralize } from '@/lib/utils'
 import { getPeakDayContext } from '@/lib/peak-day-context'
 import { HighlightType, type PeakDayHighlight } from '@/lib/highlight-share'
+import { type ActivityLevel, isLowActivity } from '@/lib/activity-level'
+import {
+  getPeakMomentsSubtitle,
+  getPeakMomentsTransition,
+  getPeakMomentsEmptyDescription,
+} from '@/lib/chapter-copy'
 
 export interface PeakMomentsData {
   busiestDay: {
@@ -36,18 +42,37 @@ interface PeakMomentsChapterProps {
   isLoading?: boolean
   username?: string
   year?: number
+  activityLevel?: ActivityLevel
 }
 
-function getTimeOfDayDescription(time: PeakMomentsData['favoriteTimeOfDay']) {
-  switch (time) {
-    case 'morning':
-      return { label: 'Morning person', desc: 'You do your best work before noon.' }
-    case 'afternoon':
-      return { label: 'Afternoon focus', desc: 'You hit your stride after lunch.' }
-    case 'evening':
-      return { label: 'Evening coder', desc: 'You find your flow as the day winds down.' }
-    case 'night':
-      return { label: 'Night owl', desc: 'The quiet hours are when you do your best work.' }
+function getTimeOfDayDescription(
+  time: PeakMomentsData['favoriteTimeOfDay'],
+  activityLevel: ActivityLevel
+) {
+  const labels = {
+    morning: 'Morning person',
+    afternoon: 'Afternoon focus',
+    evening: 'Evening coder',
+    night: 'Night owl',
+  }
+
+  const motivationalDescs = {
+    morning: 'You do your best work before noon.',
+    afternoon: 'You hit your stride after lunch.',
+    evening: 'You find your flow as the day winds down.',
+    night: 'The quiet hours are when you do your best work.',
+  }
+
+  const neutralDescs = {
+    morning: 'Most activity occurred before noon.',
+    afternoon: 'Most activity occurred in the afternoon.',
+    evening: 'Most activity occurred in the evening.',
+    night: 'Most activity occurred late at night.',
+  }
+
+  return {
+    label: labels[time],
+    desc: isLowActivity(activityLevel) ? neutralDescs[time] : motivationalDescs[time],
   }
 }
 
@@ -69,6 +94,7 @@ export function PeakMomentsChapter({
   isLoading,
   username,
   year,
+  activityLevel = 'typical',
 }: PeakMomentsChapterProps) {
   const peakDayHighlight: PeakDayHighlight | null = data?.busiestDay && username && year ? {
     type: HighlightType.PeakDay,
@@ -91,20 +117,21 @@ export function PeakMomentsChapter({
       <Chapter>
         <EmptyState
           title="No peak moments found"
-          description="Every day is an opportunity. Your peak moments are ahead of you."
+          description={getPeakMomentsEmptyDescription(activityLevel)}
         />
       </Chapter>
     )
   }
 
-  const timeStyle = getTimeOfDayDescription(data.favoriteTimeOfDay)
+  const timeStyle = getTimeOfDayDescription(data.favoriteTimeOfDay, activityLevel)
+  const transition = getPeakMomentsTransition(activityLevel)
 
   return (
     <Chapter>
       <ChapterLabel>Chapter Four</ChapterLabel>
       <ChapterTitle>Peak Moments</ChapterTitle>
       <ChapterSubtitle>
-        The days you were in flow. When everything clicked.
+        {getPeakMomentsSubtitle(activityLevel)}
       </ChapterSubtitle>
 
       {/* Busiest day - the hero moment with context */}
@@ -208,10 +235,12 @@ export function PeakMomentsChapter({
         </p>
       </div>
 
-      {/* Transition to epilogue */}
-      <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-700">
-        That was your year. Let&apos;s bring it all together.
-      </p>
+      {/* Transition to epilogue - only show for typical/high activity */}
+      {transition && (
+        <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-700">
+          {transition}
+        </p>
+      )}
     </Chapter>
   )
 }
