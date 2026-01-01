@@ -8,6 +8,7 @@ interface CacheEntry<T> {
   data: T
   timestamp: number
   ttl: number
+  cachedInYear: number // Year when the cache entry was created
 }
 
 // TTLs in milliseconds
@@ -38,6 +39,16 @@ export function getCached<T>(prefix: string, year: number): T | null {
 
     const entry: CacheEntry<T> = JSON.parse(raw)
     const now = Date.now()
+    const currentYear = new Date().getFullYear()
+
+    // Invalidate cache if year boundary crossed for past year data
+    // This handles the case where data was cached on Dec 31 for year X,
+    // and we're now in year X+1 viewing year X (which is now a "past year")
+    if (entry.cachedInYear !== undefined && entry.cachedInYear !== currentYear && year < currentYear) {
+      cacheLogger.debug(`INVALIDATED for ${key}: cached in ${entry.cachedInYear}, now ${currentYear}`)
+      localStorage.removeItem(key)
+      return null
+    }
 
     // Check if cache is still valid
     if (now - entry.timestamp < entry.ttl) {
@@ -68,6 +79,7 @@ export function setCache<T>(prefix: string, year: number, data: T): void {
       data,
       timestamp: Date.now(),
       ttl,
+      cachedInYear: new Date().getFullYear(),
     }
 
     localStorage.setItem(key, JSON.stringify(entry))

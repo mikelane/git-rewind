@@ -10,11 +10,12 @@ import {
 } from '@/lib/errors'
 
 const GITHUB_FOUNDING_YEAR = 2008
-const CURRENT_YEAR = new Date().getFullYear()
 
-function validateYear(yearParam: string | null): number | null {
+function validateYear(yearParam: string | null): { year: number; currentYear: number } | null {
+  const currentYear = new Date().getFullYear()
+
   if (!yearParam) {
-    return CURRENT_YEAR
+    return { year: currentYear, currentYear }
   }
 
   const year = parseInt(yearParam, 10)
@@ -23,11 +24,11 @@ function validateYear(yearParam: string | null): number | null {
     return null
   }
 
-  if (year < GITHUB_FOUNDING_YEAR || year > CURRENT_YEAR) {
+  if (year < GITHUB_FOUNDING_YEAR || year > currentYear) {
     return null
   }
 
-  return year
+  return { year, currentYear }
 }
 
 export async function GET(request: NextRequest) {
@@ -41,14 +42,17 @@ export async function GET(request: NextRequest) {
   }
 
   const searchParams = request.nextUrl.searchParams
-  const year = validateYear(searchParams.get('year'))
+  const validated = validateYear(searchParams.get('year'))
 
-  if (year === null) {
+  if (validated === null) {
+    const currentYear = new Date().getFullYear()
     return NextResponse.json(
-      { error: `Invalid year. Must be between ${GITHUB_FOUNDING_YEAR} and ${CURRENT_YEAR}.` },
+      { error: `Invalid year. Must be between ${GITHUB_FOUNDING_YEAR} and ${currentYear}.` },
       { status: 400 }
     )
   }
+
+  const { year } = validated
 
   try {
     const client = new GitHubClient(session.accessToken)
