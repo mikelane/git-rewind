@@ -8,9 +8,11 @@ import {
   StatCallout,
   ChapterLoading,
   EmptyState,
+  ShareButton,
 } from '@/components/ui'
 import { cn, pluralize } from '@/lib/utils'
 import { getPeakDayContext } from '@/lib/peak-day-context'
+import { HighlightType, type PeakDayHighlight } from '@/lib/highlight-share'
 
 export interface PeakMomentsData {
   busiestDay: {
@@ -32,6 +34,8 @@ export interface PeakMomentsData {
 interface PeakMomentsChapterProps {
   data: PeakMomentsData | null
   isLoading?: boolean
+  username?: string
+  year?: number
 }
 
 function getTimeOfDayDescription(time: PeakMomentsData['favoriteTimeOfDay']) {
@@ -63,7 +67,17 @@ function getTimeOfDayIcon(time: PeakMomentsData['favoriteTimeOfDay']) {
 export function PeakMomentsChapter({
   data,
   isLoading,
+  username,
+  year,
 }: PeakMomentsChapterProps) {
+  const peakDayHighlight: PeakDayHighlight | null = data?.busiestDay && username && year ? {
+    type: HighlightType.PeakDay,
+    username,
+    year,
+    date: data.busiestDay.formattedDate,
+    commits: data.busiestDay.commits,
+  } : null
+
   if (isLoading) {
     return (
       <Chapter>
@@ -112,6 +126,11 @@ export function PeakMomentsChapter({
             }
             delay={300}
           />
+          {peakDayHighlight && (
+            <div className="mt-4 opacity-0 animate-fade-in delay-400">
+              <ShareButton highlight={peakDayHighlight} />
+            </div>
+          )}
         </div>
       )}
 
