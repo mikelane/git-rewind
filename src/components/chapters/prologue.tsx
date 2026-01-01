@@ -1,6 +1,8 @@
 'use client'
 
 import { cn, pluralize } from '@/lib/utils'
+import { ShareButton } from '@/components/ui'
+import { HighlightType, type ContributionsHighlight } from '@/lib/highlight-share'
 
 interface PrologueData {
   year: number
@@ -22,6 +24,13 @@ export function PrologueChapter({
   isComparisonLoading,
   onContinue,
 }: PrologueChapterProps) {
+  const contributionsHighlight: ContributionsHighlight | null = data ? {
+    type: HighlightType.Contributions,
+    username: data.username,
+    year: data.year,
+    totalContributions: data.totalContributions,
+  } : null
+
   if (isLoading || !data) {
     return (
       <section className="min-h-screen w-full flex flex-col items-center justify-center px-6">
@@ -80,6 +89,11 @@ export function PrologueChapter({
         <p className="text-lead text-text-secondary mt-2">
           {pluralize(data.totalContributions, 'contribution', 'contributions')} this year
         </p>
+        {contributionsHighlight && (
+          <div className="mt-4">
+            <ShareButton highlight={contributionsHighlight} />
+          </div>
+        )}
       </div>
 
       {/* Year-over-year insights - secondary, faded */}

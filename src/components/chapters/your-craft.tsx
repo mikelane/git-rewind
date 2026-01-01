@@ -10,7 +10,9 @@ import {
   type LanguageData,
   ChapterLoading,
   EmptyState,
+  ShareButton,
 } from '@/components/ui'
+import { HighlightType, type LanguageHighlight } from '@/lib/highlight-share'
 
 export interface YourCraftData {
   primaryLanguage: string
@@ -22,9 +24,19 @@ export interface YourCraftData {
 interface YourCraftChapterProps {
   data: YourCraftData | null
   isLoading?: boolean
+  username?: string
+  year?: number
 }
 
-export function YourCraftChapter({ data, isLoading }: YourCraftChapterProps) {
+export function YourCraftChapter({ data, isLoading, username, year }: YourCraftChapterProps) {
+  const languageHighlight: LanguageHighlight | null = data && username && year ? {
+    type: HighlightType.Language,
+    username,
+    year,
+    language: data.primaryLanguage,
+    percentage: data.primaryLanguagePercentage,
+  } : null
+
   if (isLoading) {
     return (
       <Chapter>
@@ -73,6 +85,11 @@ export function YourCraftChapter({ data, isLoading }: YourCraftChapterProps) {
           }
           delay={300}
         />
+        {languageHighlight && (
+          <div className="mt-4 opacity-0 animate-fade-in delay-400">
+            <ShareButton highlight={languageHighlight} />
+          </div>
+        )}
       </div>
 
       {/* Language breakdown bar */}

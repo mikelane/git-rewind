@@ -8,8 +8,10 @@ import {
   StatCallout,
   ChapterLoading,
   EmptyState,
+  ShareButton,
 } from '@/components/ui'
 import { cn, pluralize } from '@/lib/utils'
+import { HighlightType, type StreakHighlight, type ActiveDaysHighlight } from '@/lib/highlight-share'
 
 export interface ContributionDay {
   date: string
@@ -30,9 +32,26 @@ export interface TheRhythmData {
 interface TheRhythmChapterProps {
   data: TheRhythmData | null
   isLoading?: boolean
+  username?: string
+  year?: number
 }
 
-export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
+export function TheRhythmChapter({ data, isLoading, username, year }: TheRhythmChapterProps) {
+  const streakHighlight: StreakHighlight | null = data && username && year ? {
+    type: HighlightType.Streak,
+    username,
+    year,
+    longestStreak: data.longestStreak,
+  } : null
+
+  const activeDaysHighlight: ActiveDaysHighlight | null = data && username && year ? {
+    type: HighlightType.ActiveDays,
+    username,
+    year,
+    activeDays: data.activeDays,
+    totalDays: data.totalDays,
+  } : null
+
   if (isLoading) {
     return (
       <Chapter>
@@ -63,7 +82,7 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
       </ChapterSubtitle>
 
       {/* Primary stat */}
-      <div className="mt-16">
+      <div className="mt-16 relative">
         <StatCallout
           value={data.activeDays}
           unit={pluralize(data.activeDays, 'day', 'days')}
@@ -78,6 +97,11 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
           }
           delay={300}
         />
+        {activeDaysHighlight && (
+          <div className="mt-4 opacity-0 animate-fade-in delay-400">
+            <ShareButton highlight={activeDaysHighlight} />
+          </div>
+        )}
       </div>
 
       {/* Monthly rhythm visualization - mobile responsive */}
@@ -176,20 +200,25 @@ export function TheRhythmChapter({ data, isLoading }: TheRhythmChapterProps) {
           'mt-16 p-6 rounded-xl bg-accent/10 border border-accent/20',
           'opacity-0 animate-fade-in delay-500'
         )}>
-          <div className="flex items-center gap-4">
-            <span className="text-3xl">🔥</span>
-            <div>
-              <p className="font-display text-display-sm text-text-primary">
-                {data.longestStreak} day streak
-              </p>
-              <p className="text-body-sm text-text-secondary mt-1">
-                {data.currentStreak > 0 ? (
-                  <>Currently on a <span className="text-accent font-medium">{data.currentStreak}-day</span> streak</>
-                ) : (
-                  'Your longest consecutive coding streak'
-                )}
-              </p>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-3xl">🔥</span>
+              <div>
+                <p className="font-display text-display-sm text-text-primary">
+                  {data.longestStreak} day streak
+                </p>
+                <p className="text-body-sm text-text-secondary mt-1">
+                  {data.currentStreak > 0 ? (
+                    <>Currently on a <span className="text-accent font-medium">{data.currentStreak}-day</span> streak</>
+                  ) : (
+                    'Your longest consecutive coding streak'
+                  )}
+                </p>
+              </div>
             </div>
+            {streakHighlight && (
+              <ShareButton highlight={streakHighlight} />
+            )}
           </div>
         </div>
       )}
