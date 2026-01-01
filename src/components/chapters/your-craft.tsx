@@ -13,6 +13,13 @@ import {
   ShareButton,
 } from '@/components/ui'
 import { HighlightType, type LanguageHighlight } from '@/lib/highlight-share'
+import { type ActivityLevel } from '@/lib/activity-level'
+import {
+  getCraftSubtitle,
+  getCraftLanguageContext,
+  getCraftTransition,
+  getCraftEmptyDescription,
+} from '@/lib/chapter-copy'
 
 export interface YourCraftData {
   primaryLanguage: string
@@ -26,9 +33,16 @@ interface YourCraftChapterProps {
   isLoading?: boolean
   username?: string
   year?: number
+  activityLevel?: ActivityLevel
 }
 
-export function YourCraftChapter({ data, isLoading, username, year }: YourCraftChapterProps) {
+export function YourCraftChapter({
+  data,
+  isLoading,
+  username,
+  year,
+  activityLevel = 'typical',
+}: YourCraftChapterProps) {
   const languageHighlight: LanguageHighlight | null = data && username && year ? {
     type: HighlightType.Language,
     username,
@@ -50,11 +64,13 @@ export function YourCraftChapter({ data, isLoading, username, year }: YourCraftC
       <Chapter>
         <EmptyState
           title="No language data yet"
-          description="We couldn't find any code contributions for this period. Keep building — your story is just beginning."
+          description={getCraftEmptyDescription(activityLevel)}
         />
       </Chapter>
     )
   }
+
+  const transition = getCraftTransition(activityLevel)
 
   return (
     <Chapter>
@@ -66,8 +82,7 @@ export function YourCraftChapter({ data, isLoading, username, year }: YourCraftC
 
       {/* Contextual subtitle */}
       <ChapterSubtitle>
-        The tools you reached for. The languages that shaped your thinking this
-        year.
+        {getCraftSubtitle(activityLevel)}
       </ChapterSubtitle>
 
       {/* Primary stat callout */}
@@ -80,7 +95,7 @@ export function YourCraftChapter({ data, isLoading, username, year }: YourCraftC
               <span className="text-text-primary font-medium">
                 {data.primaryLanguage}
               </span>{' '}
-              was your primary language this year — the foundation of your work.
+              {getCraftLanguageContext(activityLevel, data.primaryLanguage).replace(`${data.primaryLanguage} `, '')}
             </>
           }
           delay={300}
@@ -113,10 +128,12 @@ export function YourCraftChapter({ data, isLoading, username, year }: YourCraftC
         </div>
       )}
 
-      {/* Transition to next chapter */}
-      <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-700">
-        That&apos;s what you built. But you didn&apos;t build it alone.
-      </p>
+      {/* Transition to next chapter - only show for typical/high activity */}
+      {transition && (
+        <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-700">
+          {transition}
+        </p>
+      )}
     </Chapter>
   )
 }

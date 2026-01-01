@@ -5,6 +5,11 @@ import { cn, pluralize } from '@/lib/utils'
 import { getLanguageColor } from '@/lib/constants'
 import { shareHighlight } from '@/lib/share'
 import { MethodologyModal } from '@/components/ui/methodology-modal'
+import { type ActivityLevel } from '@/lib/activity-level'
+import {
+  getEpilogueClosingMessage,
+  getEpilogueClosingContext,
+} from '@/lib/chapter-copy'
 
 export interface EpilogueData {
   year: number
@@ -24,11 +29,17 @@ interface EpilogueChapterProps {
   data: EpilogueData | null
   isLoading?: boolean
   onDownload?: () => void
+  activityLevel?: ActivityLevel
 }
 
 type ShareState = 'idle' | 'sharing' | 'shared' | 'copied'
 
-export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapterProps) {
+export function EpilogueChapter({
+  data,
+  isLoading,
+  onDownload,
+  activityLevel = 'typical',
+}: EpilogueChapterProps) {
   const [shareState, setShareState] = useState<ShareState>('idle')
   const [isMethodologyOpen, setIsMethodologyOpen] = useState(false)
 
@@ -55,6 +66,8 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
   }
 
   const languageColor = getLanguageColor(data.topLanguage)
+  const closingMessage = getEpilogueClosingMessage(activityLevel)
+  const closingContext = getEpilogueClosingContext(activityLevel, data.activeDays)
 
   const shareButtonText = {
     idle: 'Share a Highlight',
@@ -72,16 +85,18 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
           'opacity-0 animate-fade-in'
         )}
       >
-        This wasn&apos;t about the numbers.
+        {closingMessage}
       </p>
-      <p
-        className={cn(
-          'text-lead md:text-xl text-text-secondary text-center mt-6 max-w-lg',
-          'opacity-0 animate-fade-in delay-100'
-        )}
-      >
-        It was about showing up — {data.activeDays} times this year. Every commit moved something forward.
-      </p>
+      {closingContext && (
+        <p
+          className={cn(
+            'text-lead md:text-xl text-text-secondary text-center mt-6 max-w-lg',
+            'opacity-0 animate-fade-in delay-100'
+          )}
+        >
+          {closingContext}
+        </p>
+      )}
 
       {/* Share card */}
       <div

@@ -12,6 +12,13 @@ import {
 } from '@/components/ui'
 import { cn, pluralize } from '@/lib/utils'
 import { isBot } from '@/lib/bot-detection'
+import { type ActivityLevel, isLowActivity } from '@/lib/activity-level'
+import {
+  getCollaborationSubtitle,
+  getCollaborationMergedContext,
+  getCollaborationTransition,
+  getCollaborationEmptyDescription,
+} from '@/lib/chapter-copy'
 
 export interface CollaboratorData {
   username: string
@@ -33,9 +40,17 @@ export interface TheCollaborationData {
 interface TheCollaborationChapterProps {
   data: TheCollaborationData | null
   isLoading?: boolean
+  activityLevel?: ActivityLevel
 }
 
-function getReviewStyleDescription(style: TheCollaborationData['reviewStyle']) {
+function getReviewStyleDescription(
+  style: TheCollaborationData['reviewStyle'],
+  activityLevel: ActivityLevel
+): string | null {
+  if (isLowActivity(activityLevel)) {
+    return null
+  }
+
   switch (style) {
     case 'thorough':
       return 'Your reviews are detailed and thoughtful—the kind that elevate the whole team.'
@@ -49,6 +64,7 @@ function getReviewStyleDescription(style: TheCollaborationData['reviewStyle']) {
 export function TheCollaborationChapter({
   data,
   isLoading,
+  activityLevel = 'typical',
 }: TheCollaborationChapterProps) {
   if (isLoading) {
     return (
@@ -63,7 +79,7 @@ export function TheCollaborationChapter({
       <Chapter>
         <EmptyState
           title="No collaboration data"
-          description="Solo work is still meaningful work. Every journey has its own shape."
+          description={getCollaborationEmptyDescription(activityLevel)}
         />
       </Chapter>
     )
@@ -71,13 +87,15 @@ export function TheCollaborationChapter({
 
   const hasReviews = data.pullRequestsReviewed > 0
   const hasCollaborators = data.topCollaborators.length > 0
+  const transition = getCollaborationTransition(activityLevel)
+  const reviewStyleDesc = getReviewStyleDescription(data.reviewStyle, activityLevel)
 
   return (
     <Chapter>
       <ChapterLabel>Chapter Three</ChapterLabel>
       <ChapterTitle>The Collaboration</ChapterTitle>
       <ChapterSubtitle>
-        Code is a conversation. These are the people and PRs that shaped your year.
+        {getCollaborationSubtitle(activityLevel)}
       </ChapterSubtitle>
 
       {/* Primary stat - Reviews or PRs depending on what's more impressive */}
@@ -92,7 +110,7 @@ export function TheCollaborationChapter({
                 <span className="text-text-primary font-medium">
                   {data.pullRequestsReviewed}
                 </span>{' '}
-                pull requests. {getReviewStyleDescription(data.reviewStyle)}
+                pull requests.{reviewStyleDesc && ` ${reviewStyleDesc}`}
               </>
             }
             delay={300}
@@ -103,11 +121,7 @@ export function TheCollaborationChapter({
             unit="merged"
             context={
               <>
-                You shipped{' '}
-                <span className="text-text-primary font-medium">
-                  {data.pullRequestsMerged}
-                </span>{' '}
-                pull requests this year. Every merge is progress.
+                {getCollaborationMergedContext(activityLevel, data.pullRequestsMerged)}
               </>
             }
             delay={300}
@@ -216,10 +230,12 @@ export function TheCollaborationChapter({
         </div>
       )}
 
-      {/* Transition to next chapter */}
-      <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-800">
-        Now let&apos;s look at when you did your best work.
-      </p>
+      {/* Transition to next chapter - only show for typical/high activity */}
+      {transition && (
+        <p className="mt-20 text-body-sm text-text-tertiary italic opacity-0 animate-fade-in delay-800">
+          {transition}
+        </p>
+      )}
     </Chapter>
   )
 }
