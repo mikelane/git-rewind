@@ -29,6 +29,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm lint
 
+      - name: Notify Vercel
+        if: always()
+        uses: vercel/repository-dispatch/actions/status@v1
+        with:
+          name: 'Vercel - git-rewind: Lint'
+
   typecheck:
     name: Type Check
     runs-on: ubuntu-latest
@@ -46,6 +52,12 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm typecheck
+
+      - name: Notify Vercel
+        if: always()
+        uses: vercel/repository-dispatch/actions/status@v1
+        with:
+          name: 'Vercel - git-rewind: Type Check'
 
   test:
     name: Test
@@ -65,6 +77,12 @@ jobs:
       - run: pnpm install --frozen-lockfile
       - run: pnpm test:run
 
+      - name: Notify Vercel
+        if: always()
+        uses: vercel/repository-dispatch/actions/status@v1
+        with:
+          name: 'Vercel - git-rewind: Test'
+
   build:
     name: Build
     runs-on: ubuntu-latest
@@ -83,3 +101,9 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
       - run: pnpm build
+
+      - name: Notify Vercel
+        if: always()
+        uses: vercel/repository-dispatch/actions/status@v1
+        with:
+          name: 'Vercel - git-rewind: Build'
