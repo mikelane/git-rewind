@@ -152,24 +152,6 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
             </div>
           </div>
 
-          {/* Top language badge */}
-          <div className="flex justify-center mt-8">
-            <div
-              className={cn(
-                'inline-flex items-center gap-2 px-4 py-2 rounded-full',
-                'bg-bg-elevated'
-              )}
-            >
-              <span
-                className="w-3 h-3 rounded-full"
-                style={{ backgroundColor: languageColor }}
-              />
-              <span className="text-body-sm text-text-secondary">
-                Powered by {data.topLanguage}
-              </span>
-            </div>
-          </div>
-
           {/* Data completeness note - more prominent as trust moment */}
           {data.dataCompleteness && data.dataCompleteness.restrictedContributions > 0 && (
             <div className="mt-6 px-4 py-3 rounded-lg bg-bg-elevated/50 border border-border-subtle">

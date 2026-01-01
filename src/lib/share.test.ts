@@ -33,9 +33,9 @@ describe('generateShareText', () => {
     expect(text).toContain('200')
   })
 
-  it('includes top language', () => {
+  it('does not include "Powered by" branding (Issue #10)', () => {
     const text = generateShareText(mockEpilogueData)
-    expect(text).toContain('TypeScript')
+    expect(text).not.toMatch(/powered by/i)
   })
 
   it('includes longest streak', () => {
