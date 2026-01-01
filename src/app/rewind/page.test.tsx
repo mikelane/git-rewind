@@ -24,6 +24,7 @@ vi.mock('@/components/ui', () => ({
 
 vi.mock('@/hooks', () => ({
   useScrollProgress: () => ({ currentChapter: 0 }),
+  useKeyboardNavigation: () => {},
 }))
 
 vi.mock('@/lib/cache', () => ({
