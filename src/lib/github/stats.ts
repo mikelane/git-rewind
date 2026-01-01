@@ -236,7 +236,8 @@ export function processContributions(
   // Day of week analysis
   const dayOfWeekCounts = [0, 0, 0, 0, 0, 0, 0]
   for (const day of allDays) {
-    const dow = new Date(day.date).getDay()
+    // Use UTC to avoid timezone issues - GitHub dates are UTC
+    const dow = new Date(day.date + 'T12:00:00Z').getUTCDay()
     dayOfWeekCounts[dow] += day.contributionCount
   }
   const totalDayContributions = dayOfWeekCounts.reduce((sum, count) => sum + count, 0)

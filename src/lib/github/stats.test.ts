@@ -906,8 +906,8 @@ describe('processContributions', () => {
               weeks: [
                 {
                   contributionDays: [
-                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Sunday
-                    { date: '2024-01-02', contributionCount: 10, contributionLevel: 'FIRST_QUARTILE' }, // Monday
+                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Monday
+                    { date: '2024-01-02', contributionCount: 10, contributionLevel: 'FIRST_QUARTILE' }, // Tuesday
                   ],
                 },
               ],
@@ -922,7 +922,7 @@ describe('processContributions', () => {
 
       const result = processContributions(data, 2024)
 
-      expect(result.peakMoments.favoriteDaysOfWeek).toEqual(['Sunday'])
+      expect(result.peakMoments.favoriteDaysOfWeek).toEqual(['Monday'])
     })
 
     it('returns all tied days when multiple days have equal contributions', () => {
@@ -943,8 +943,8 @@ describe('processContributions', () => {
               weeks: [
                 {
                   contributionDays: [
-                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Sunday
-                    { date: '2024-01-02', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Monday
+                    { date: '2024-01-01', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Monday
+                    { date: '2024-01-02', contributionCount: 100, contributionLevel: 'FOURTH_QUARTILE' }, // Tuesday
                   ],
                 },
               ],
@@ -959,8 +959,8 @@ describe('processContributions', () => {
 
       const result = processContributions(data, 2024)
 
-      expect(result.peakMoments.favoriteDaysOfWeek).toContain('Sunday')
       expect(result.peakMoments.favoriteDaysOfWeek).toContain('Monday')
+      expect(result.peakMoments.favoriteDaysOfWeek).toContain('Tuesday')
       expect(result.peakMoments.favoriteDaysOfWeek).toHaveLength(2)
     })
 
