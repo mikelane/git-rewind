@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { cn, pluralize } from '@/lib/utils'
 import { getLanguageColor } from '@/lib/constants'
 import { shareHighlight } from '@/lib/share'
+import { MethodologyModal } from '@/components/ui/methodology-modal'
 
 export interface EpilogueData {
   year: number
@@ -29,6 +30,7 @@ type ShareState = 'idle' | 'sharing' | 'shared' | 'copied'
 
 export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapterProps) {
   const [shareState, setShareState] = useState<ShareState>('idle')
+  const [isMethodologyOpen, setIsMethodologyOpen] = useState(false)
 
   const handleShare = useCallback(async () => {
     if (!data) {
@@ -47,7 +49,7 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
   if (isLoading || !data) {
     return (
       <section className="min-h-screen w-full flex flex-col items-center justify-center px-6">
-        <div className="skeleton h-80 w-80 rounded-2xl" />
+        <div data-testid="epilogue-skeleton" className="skeleton h-80 w-80 rounded-2xl" />
       </section>
     )
   }
@@ -215,7 +217,7 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
         <p>
           Open source. Privacy by design. Free forever.
         </p>
-        <p className="mt-3 flex items-center justify-center gap-3">
+        <p className="mt-3 flex items-center justify-center gap-3 flex-wrap">
           <a
             href="https://github.com/mikelane/git-rewind"
             className="hover:text-text-secondary transition-colors"
@@ -233,8 +235,21 @@ export function EpilogueChapter({ data, isLoading, onDownload }: EpilogueChapter
           >
             Sponsor
           </a>
+          <span className="text-border-subtle">·</span>
+          <button
+            onClick={() => setIsMethodologyOpen(true)}
+            className="hover:text-text-secondary transition-colors"
+          >
+            How this is calculated
+          </button>
         </p>
       </div>
+
+      {/* Methodology Modal */}
+      <MethodologyModal
+        isOpen={isMethodologyOpen}
+        onClose={() => setIsMethodologyOpen(false)}
+      />
     </section>
   )
 }
