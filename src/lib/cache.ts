@@ -112,3 +112,17 @@ export function clearCache(prefix?: string): void {
     cacheLogger.error('Error clearing cache:', e)
   }
 }
+
+export function clearCacheForYear(prefix: string, year: number): void {
+  if (typeof window === 'undefined') {
+    return
+  }
+
+  try {
+    const key = getCacheKey(prefix, year)
+    localStorage.removeItem(key)
+    cacheLogger.debug(`CLEARED cache for ${key}`)
+  } catch (e) {
+    cacheLogger.error('Error clearing cache for year:', e)
+  }
+}

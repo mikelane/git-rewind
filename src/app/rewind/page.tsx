@@ -13,7 +13,7 @@ import { ProgressIndicator } from '@/components/ui'
 import { useScrollProgress, useKeyboardNavigation } from '@/hooks'
 import type { YearStats } from '@/lib/github'
 import { cn } from '@/lib/utils'
-import { getCached, setCache } from '@/lib/cache'
+import { getCached, setCache, clearCacheForYear } from '@/lib/cache'
 import { downloadRewind } from '@/lib/export'
 import { compareYears, type YearComparison } from '@/lib/comparisons'
 import { comparisonLogger } from '@/lib/logger'
@@ -33,6 +33,7 @@ export default function RewindPage() {
   const [error, setError] = useState<string | null>(null)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
   const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
+  const [refreshing, setRefreshing] = useState(false)
 
   // Ref to track current year for race condition prevention in background fetches
   const currentYearRef = useRef(selectedYear)
@@ -205,6 +206,13 @@ export default function RewindPage() {
     }
   }, [fetchYearStats, computeComparison])
 
+  const handleRefresh = useCallback(async () => {
+    setRefreshing(true)
+    clearCacheForYear('stats', selectedYear)
+    await fetchStats(selectedYear)
+    setRefreshing(false)
+  }, [selectedYear, fetchStats])
+
   useEffect(() => {
     fetchStats(selectedYear)
   }, [selectedYear, fetchStats])
@@ -340,6 +348,34 @@ export default function RewindPage() {
             </button>
           )
         })}
+        <button
+          onClick={handleRefresh}
+          disabled={loading || refreshing}
+          className={cn(
+            'p-1.5 rounded-full transition-all duration-200',
+            'bg-bg-surface/50 text-text-tertiary',
+            'hover:bg-bg-elevated hover:text-text-secondary',
+            'disabled:opacity-50 disabled:cursor-not-allowed'
+          )}
+          aria-label="Refresh stats"
+          title="Refresh stats (bypass cache)"
+        >
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            width="14"
+            height="14"
+            viewBox="0 0 24 24"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="2"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+            className={cn(refreshing && 'animate-spin')}
+          >
+            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+            <path d="M21 3v5h-5" />
+          </svg>
+        </button>
       </div>
 
       {/* Progress indicator */}
