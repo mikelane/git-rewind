@@ -1,7 +1,5 @@
 # CLAUDE.md
 
-> **PROTOTYPE MODE:** This is a prototype. TDD is bypassed. Prioritize speed and efficiency over test coverage.
-
 ## Project Overview
 
 Git Rewind is a privacy-focused GitHub year-in-review tool that uses **GitHub Apps** with fine-grained, read-only permissions instead of OAuth's overly-broad `repo` scope.

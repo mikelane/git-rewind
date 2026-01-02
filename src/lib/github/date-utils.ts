@@ -15,21 +15,38 @@ export interface MonthDateRange {
 
 /**
  * Creates a UTC date range for the year.
- * For the current year, uses today (in user's local timezone) as the end date.
+ * For the current year, uses the client's local date as the end date.
  * For past years, uses December 31st.
+ *
+ * @param year - The year to create a range for
+ * @param clientDate - Optional client's local date string (YYYY-MM-DD format)
+ *                     Used to ensure day counts match user's timezone
  */
-export function createYearDateRange(year: number): YearDateRange {
-  const now = new Date()
-  // Use local year, not UTC year, to determine if this is the current year
-  // This ensures users see "today" in their timezone, not UTC
-  const currentYear = now.getFullYear()
-
+export function createYearDateRange(year: number, clientDate?: string): YearDateRange {
   const from = new Date(Date.UTC(year, 0, 1, 0, 0, 0)).toISOString()
 
-  // For current year, use today's LOCAL date (not UTC) to avoid off-by-one
-  // when user is in a timezone behind UTC
-  const to = year === currentYear
-    ? new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)).toISOString()
+  // Determine "today" from client date or fall back to server date
+  let todayYear: number
+  let todayMonth: number
+  let todayDay: number
+
+  if (clientDate) {
+    // Parse client date (YYYY-MM-DD format)
+    const [y, m, d] = clientDate.split('-').map(Number)
+    todayYear = y
+    todayMonth = m - 1 // Convert to 0-indexed
+    todayDay = d
+  } else {
+    // Fall back to server's local date
+    const now = new Date()
+    todayYear = now.getFullYear()
+    todayMonth = now.getMonth()
+    todayDay = now.getDate()
+  }
+
+  // For current year, use today's date; for past years, use Dec 31
+  const to = year === todayYear
+    ? new Date(Date.UTC(todayYear, todayMonth, todayDay, 23, 59, 59)).toISOString()
     : new Date(Date.UTC(year, 11, 31, 23, 59, 59)).toISOString()
 
   return { from, to }

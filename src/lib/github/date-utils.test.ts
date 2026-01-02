@@ -7,9 +7,29 @@ describe('createYearDateRange', () => {
     expect(result.from).toBe('2024-01-01T00:00:00.000Z')
   })
 
-  it('returns the last moment of December 31st as the end date', () => {
-    const result = createYearDateRange(2024)
+  it('returns the last moment of December 31st as the end date for past years', () => {
+    const result = createYearDateRange(2024, '2026-01-15')
     expect(result.to).toBe('2024-12-31T23:59:59.000Z')
+  })
+
+  it('uses clientDate as end date when querying the current year', () => {
+    // When clientDate is 2026-01-01, and we query 2026, use that date as the end
+    const result = createYearDateRange(2026, '2026-01-01')
+    expect(result.from).toBe('2026-01-01T00:00:00.000Z')
+    expect(result.to).toBe('2026-01-01T23:59:59.000Z')
+  })
+
+  it('uses clientDate mid-year for current year', () => {
+    const result = createYearDateRange(2026, '2026-06-15')
+    expect(result.from).toBe('2026-01-01T00:00:00.000Z')
+    expect(result.to).toBe('2026-06-15T23:59:59.000Z')
+  })
+
+  it('uses Dec 31 for past year even when clientDate is provided', () => {
+    // When clientDate is 2026-01-15 but we query 2025, use full year
+    const result = createYearDateRange(2025, '2026-01-15')
+    expect(result.from).toBe('2025-01-01T00:00:00.000Z')
+    expect(result.to).toBe('2025-12-31T23:59:59.000Z')
   })
 })
 

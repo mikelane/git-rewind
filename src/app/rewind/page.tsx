@@ -23,6 +23,18 @@ import { classifyActivityLevel } from '@/lib/activity-level'
 const CURRENT_YEAR = new Date().getFullYear()
 const AVAILABLE_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
 
+/**
+ * Get the client's local date in YYYY-MM-DD format.
+ * Sent to the API so date ranges respect the user's timezone.
+ */
+function getLocalDate(): string {
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return `${year}-${month}-${day}`
+}
+
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
 
 export default function RewindPage() {
@@ -80,7 +92,9 @@ export default function RewindPage() {
     }
 
     try {
-      const response = await fetch(`/api/stats?year=${year}`)
+      // Include client's local date for timezone-aware date ranges
+      const clientDate = getLocalDate()
+      const response = await fetch(`/api/stats?year=${year}&clientDate=${clientDate}`)
 
       if (response.status === 401) {
         window.location.href = '/api/auth/login'

@@ -11,9 +11,26 @@ import {
 
 const GITHUB_FOUNDING_YEAR = 2008
 
-function validateYear(yearParam: string | null): { year: number; currentYear: number } | null {
-  const currentYear = new Date().getFullYear()
+/**
+ * Parse client date string (YYYY-MM-DD) to extract year
+ * Falls back to server date if invalid/missing
+ */
+function parseClientDate(clientDate: string | null): { year: number; date: string } {
+  if (clientDate && /^\d{4}-\d{2}-\d{2}$/.test(clientDate)) {
+    const year = parseInt(clientDate.split('-')[0], 10)
+    if (!isNaN(year) && year >= GITHUB_FOUNDING_YEAR) {
+      return { year, date: clientDate }
+    }
+  }
+  // Fall back to server date
+  const now = new Date()
+  const year = now.getFullYear()
+  const month = String(now.getMonth() + 1).padStart(2, '0')
+  const day = String(now.getDate()).padStart(2, '0')
+  return { year, date: `${year}-${month}-${day}` }
+}
 
+function validateYear(yearParam: string | null, currentYear: number): { year: number; currentYear: number } | null {
   if (!yearParam) {
     return { year: currentYear, currentYear }
   }
@@ -42,10 +59,12 @@ export async function GET(request: NextRequest) {
   }
 
   const searchParams = request.nextUrl.searchParams
-  const validated = validateYear(searchParams.get('year'))
+
+  // Parse client's local date for timezone-aware calculations
+  const { year: currentYear, date: clientDate } = parseClientDate(searchParams.get('clientDate'))
+  const validated = validateYear(searchParams.get('year'), currentYear)
 
   if (validated === null) {
-    const currentYear = new Date().getFullYear()
     return NextResponse.json(
       { error: `Invalid year. Must be between ${GITHUB_FOUNDING_YEAR} and ${currentYear}.` },
       { status: 400 }
@@ -59,10 +78,11 @@ export async function GET(request: NextRequest) {
 
     // Get the authenticated user
     const viewer = await client.getViewer()
-    statsLogger.debug(`Fetching stats for user: ${viewer.login}, year: ${year}`)
+    statsLogger.debug(`Fetching stats for user: ${viewer.login}, year: ${year}, clientDate: ${clientDate}`)
 
     // Get contributions for the year (GraphQL - public repos only for details)
-    const contributions = await client.getUserContributions(viewer.login, year)
+    // Pass clientDate to ensure date ranges respect user's timezone
+    const contributions = await client.getUserContributions(viewer.login, year, clientDate)
 
     // Debug: Log raw contribution counts
     const collection = contributions.user?.contributionsCollection
@@ -82,7 +102,7 @@ export async function GET(request: NextRequest) {
     let privateRepoStats: PrivateRepoStats = { repos: [], totalCommits: 0 }
     if (collection?.restrictedContributionsCount && collection.restrictedContributionsCount > 0) {
       statsLogger.debug('Fetching private repo stats via REST API...')
-      privateRepoStats = await client.getPrivateRepoStats(viewer.login, year, graphqlRepos)
+      privateRepoStats = await client.getPrivateRepoStats(viewer.login, year, graphqlRepos, clientDate)
       statsLogger.debug(`Private repos found: ${privateRepoStats.repos.length} with ${privateRepoStats.totalCommits} commits`)
     }
 
