@@ -474,8 +474,9 @@ describe('compareYears', () => {
 
       const result = compareYears(current, previous)
 
-      expect(result.narrativeInsights.some((i) => i.includes('Day 1 of 2026'))).toBe(true)
+      // New messaging: "32 contributions in 1 day — last year you hadn't started yet."
       expect(result.narrativeInsights.some((i) => i.includes('32 contributions'))).toBe(true)
+      expect(result.narrativeInsights.some((i) => i.includes('1 day'))).toBe(true)
     })
 
     it('generates Q1 message with trajectory (days 31-90)', () => {

@@ -176,13 +176,28 @@ function generateSamePeriodInsights(
   const insights: string[] = []
   const periodLabel = getPeriodLabel(dayOfYear, currentYear)
 
-  // Early year (Days 1-30): Focus on immediate comparison
+  // Early year (Days 1-30): Focus on impact, not just stats
   if (dayOfYear <= 30) {
-    const sameDayLabel = dayOfYear === 1 ? 'Same day last year' : `Same period last year`
-    insights.push(
-      `${periodLabel}: ${formatNumber(currentContributions)} contributions. ${sameDayLabel}: ${formatNumber(previousSamePeriodContributions)}.`
-    )
+    // If already exceeded last year's total, lead with that
+    if (currentContributions > previousYearTotal && previousYearTotal > 0) {
+      const multiplier = Math.round(currentContributions / previousYearTotal * 10) / 10
+      if (multiplier >= 2) {
+        insights.push(`In just ${dayOfYear} ${dayOfYear === 1 ? 'day' : 'days'}, you've already hit ${multiplier}x last year's total.`)
+      } else {
+        insights.push(`In just ${dayOfYear} ${dayOfYear === 1 ? 'day' : 'days'}, you've already exceeded last year's total.`)
+      }
+    } else if (previousSamePeriodContributions === 0 && currentContributions > 0) {
+      // Last year same period was 0, celebrate the activity
+      insights.push(`${formatNumber(currentContributions)} contributions in ${dayOfYear} ${dayOfYear === 1 ? 'day' : 'days'} — last year you hadn't started yet.`)
+    } else {
+      // Standard comparison
+      const sameDayLabel = dayOfYear === 1 ? 'Same day last year' : `Same period last year`
+      insights.push(
+        `${periodLabel}: ${formatNumber(currentContributions)} contributions. ${sameDayLabel}: ${formatNumber(previousSamePeriodContributions)}.`
+      )
+    }
 
+    // Add projection if we have enough days
     if (dayOfYear >= MIN_DAYS_FOR_PROJECTION && projectedTotal > 0) {
       const dailyAvg = Math.round(currentContributions / dayOfYear)
       insights.push(`At ${dailyAvg}/day, you're on pace for ${formatNumber(projectedTotal)} this year.`)
@@ -367,11 +382,14 @@ export function compareYears(
     }
   }
 
-  // Streak
-  if (longestStreakDelta > STREAK_DELTA_THRESHOLD) {
-    narrativeInsights.push(`Your longest streak grew by ${longestStreakDelta} days.`)
-  } else if (longestStreakDelta < -STREAK_DELTA_THRESHOLD) {
-    narrativeInsights.push(`Your longest streak was ${Math.abs(longestStreakDelta)} days shorter — but streaks aren't everything.`)
+  // Streak - only show for full-year comparison or late in the year
+  // (comparing 2-day streak to 365-day streak is meaningless)
+  if (comparisonType === 'full-year' || (periodDays && periodDays > 180)) {
+    if (longestStreakDelta > STREAK_DELTA_THRESHOLD) {
+      narrativeInsights.push(`Your longest streak grew by ${longestStreakDelta} days.`)
+    } else if (longestStreakDelta < -STREAK_DELTA_THRESHOLD) {
+      narrativeInsights.push(`Your longest streak was ${Math.abs(longestStreakDelta)} days shorter — but streaks aren't everything.`)
+    }
   }
 
   // New languages
