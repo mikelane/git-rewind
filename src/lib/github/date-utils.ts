@@ -15,19 +15,21 @@ export interface MonthDateRange {
 
 /**
  * Creates a UTC date range for the year.
- * For the current year, uses today as the end date to get accurate day counts.
+ * For the current year, uses today (in user's local timezone) as the end date.
  * For past years, uses December 31st.
- * Using Date.UTC() ensures dates are in UTC regardless of local timezone.
  */
 export function createYearDateRange(year: number): YearDateRange {
   const now = new Date()
-  const currentYear = now.getUTCFullYear()
+  // Use local year, not UTC year, to determine if this is the current year
+  // This ensures users see "today" in their timezone, not UTC
+  const currentYear = now.getFullYear()
 
   const from = new Date(Date.UTC(year, 0, 1, 0, 0, 0)).toISOString()
 
-  // For current year, use today's date; for past years, use Dec 31
+  // For current year, use today's LOCAL date (not UTC) to avoid off-by-one
+  // when user is in a timezone behind UTC
   const to = year === currentYear
-    ? new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate(), 23, 59, 59)).toISOString()
+    ? new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59)).toISOString()
     : new Date(Date.UTC(year, 11, 31, 23, 59, 59)).toISOString()
 
   return { from, to }
