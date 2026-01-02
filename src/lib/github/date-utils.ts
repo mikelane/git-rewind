@@ -15,41 +15,44 @@ export interface MonthDateRange {
 
 /**
  * Creates a UTC date range for the year.
- * For the current year, uses the client's local date as the end date.
- * For past years, uses December 31st.
+ * Always uses Jan 1 to Dec 31 to fetch complete year data.
+ * GitHub returns data only up to current date regardless of end date.
  *
  * @param year - The year to create a range for
- * @param clientDate - Optional client's local date string (YYYY-MM-DD format)
- *                     Used to ensure day counts match user's timezone
  */
-export function createYearDateRange(year: number, clientDate?: string): YearDateRange {
+export function createYearDateRange(year: number): YearDateRange {
   const from = new Date(Date.UTC(year, 0, 1, 0, 0, 0)).toISOString()
+  const to = new Date(Date.UTC(year, 11, 31, 23, 59, 59)).toISOString()
+  return { from, to }
+}
 
-  // Determine "today" from client date or fall back to server date
-  let todayYear: number
-  let todayMonth: number
-  let todayDay: number
+/**
+ * Calculate the number of days elapsed in a year based on client's local date.
+ * For current year: days from Jan 1 to clientDate (inclusive)
+ * For past years: 365 or 366 (full year)
+ *
+ * @param year - The year to calculate days for
+ * @param clientDate - Client's local date string (YYYY-MM-DD format)
+ */
+export function calculateDaysElapsed(year: number, clientDate: string): number {
+  const [clientYear, clientMonth, clientDay] = clientDate.split('-').map(Number)
 
-  if (clientDate) {
-    // Parse client date (YYYY-MM-DD format)
-    const [y, m, d] = clientDate.split('-').map(Number)
-    todayYear = y
-    todayMonth = m - 1 // Convert to 0-indexed
-    todayDay = d
-  } else {
-    // Fall back to server's local date
-    const now = new Date()
-    todayYear = now.getFullYear()
-    todayMonth = now.getMonth()
-    todayDay = now.getDate()
+  if (year < clientYear) {
+    // Past year - return full year
+    const isLeapYear = (year % 4 === 0 && year % 100 !== 0) || (year % 400 === 0)
+    return isLeapYear ? 366 : 365
   }
 
-  // For current year, use today's date; for past years, use Dec 31
-  const to = year === todayYear
-    ? new Date(Date.UTC(todayYear, todayMonth, todayDay, 23, 59, 59)).toISOString()
-    : new Date(Date.UTC(year, 11, 31, 23, 59, 59)).toISOString()
+  if (year === clientYear) {
+    // Current year - calculate days from Jan 1 to client date
+    const jan1 = new Date(Date.UTC(year, 0, 1))
+    const clientDateObj = new Date(Date.UTC(clientYear, clientMonth - 1, clientDay))
+    const diffMs = clientDateObj.getTime() - jan1.getTime()
+    return Math.floor(diffMs / (1000 * 60 * 60 * 24)) + 1 // +1 to include today
+  }
 
-  return { from, to }
+  // Future year - shouldn't happen, return 0
+  return 0
 }
 
 /**

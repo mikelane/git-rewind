@@ -74,10 +74,9 @@ export class GitHubClient {
 
   async getUserContributions(
     username: string,
-    year: number,
-    clientDate?: string
+    year: number
   ): Promise<GitHubContributionsResponse> {
-    const { from, to } = createYearDateRange(year, clientDate)
+    const { from, to } = createYearDateRange(year)
 
     return this.query<GitHubContributionsResponse>(USER_CONTRIBUTIONS_QUERY, {
       username,
@@ -89,7 +88,7 @@ export class GitHubClient {
   /**
    * Get list of private repos the user has access to, optionally filtered by activity year
    */
-  async getPrivateRepos(year?: number, clientDate?: string): Promise<{ full_name: string; private: boolean; pushed_at: string }[]> {
+  async getPrivateRepos(year?: number): Promise<{ full_name: string; private: boolean; pushed_at: string }[]> {
     const repos = await this.restGet<{ full_name: string; private: boolean; pushed_at: string }[]>(
       '/user/repos?visibility=private&per_page=100&affiliation=owner,collaborator&sort=pushed&direction=desc'
     )
@@ -98,7 +97,7 @@ export class GitHubClient {
 
     // If year specified, only include repos pushed to in that year
     if (year) {
-      const { from, to } = createYearDateRange(year, clientDate)
+      const { from, to } = createYearDateRange(year)
       const yearStart = new Date(from)
       const yearEnd = new Date(to)
 
@@ -168,10 +167,9 @@ export class GitHubClient {
   async getPrivateRepoStats(
     username: string,
     year: number,
-    excludeRepos: string[],
-    clientDate?: string
+    excludeRepos: string[]
   ): Promise<PrivateRepoStats> {
-    const privateRepos = await this.getPrivateRepos(year, clientDate)
+    const privateRepos = await this.getPrivateRepos(year)
     const reposToQuery = privateRepos.filter(r => !excludeRepos.includes(r.full_name))
 
     githubLogger.debug(`Found ${privateRepos.length} private repos with activity in ${year}, querying ${reposToQuery.length} not in GraphQL results`)

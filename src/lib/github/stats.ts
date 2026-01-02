@@ -6,6 +6,7 @@ import type {
 import type { PrivateRepoStats } from './client'
 import { getLanguageColor } from '../constants'
 import { isBot } from '../bot-detection'
+import { calculateDaysElapsed } from './date-utils'
 
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
@@ -96,7 +97,8 @@ function formatDate(dateStr: string): string {
 export function processContributions(
   data: GitHubContributionsResponse,
   year: number,
-  privateRepoStats?: PrivateRepoStats
+  privateRepoStats?: PrivateRepoStats,
+  clientDate?: string
 ): YearStats {
   const { user } = data
   const contributions = user.contributionsCollection
@@ -105,7 +107,9 @@ export function processContributions(
 
   // Rhythm stats
   const activeDays = allDays.filter(d => d.contributionCount > 0).length
-  const totalDays = allDays.length
+  // Use clientDate for accurate day count based on user's timezone
+  // Falls back to calendar length if no clientDate provided
+  const totalDays = clientDate ? calculateDaysElapsed(year, clientDate) : allDays.length
 
   const contributionsByMonth: { month: string; count: number }[] = MONTHS.map(month => ({
     month,

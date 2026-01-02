@@ -80,9 +80,8 @@ export async function GET(request: NextRequest) {
     const viewer = await client.getViewer()
     statsLogger.debug(`Fetching stats for user: ${viewer.login}, year: ${year}, clientDate: ${clientDate}`)
 
-    // Get contributions for the year (GraphQL - public repos only for details)
-    // Pass clientDate to ensure date ranges respect user's timezone
-    const contributions = await client.getUserContributions(viewer.login, year, clientDate)
+    // Get contributions for the year (GraphQL - fetches full year data)
+    const contributions = await client.getUserContributions(viewer.login, year)
 
     // Debug: Log raw contribution counts
     const collection = contributions.user?.contributionsCollection
@@ -102,12 +101,13 @@ export async function GET(request: NextRequest) {
     let privateRepoStats: PrivateRepoStats = { repos: [], totalCommits: 0 }
     if (collection?.restrictedContributionsCount && collection.restrictedContributionsCount > 0) {
       statsLogger.debug('Fetching private repo stats via REST API...')
-      privateRepoStats = await client.getPrivateRepoStats(viewer.login, year, graphqlRepos, clientDate)
+      privateRepoStats = await client.getPrivateRepoStats(viewer.login, year, graphqlRepos)
       statsLogger.debug(`Private repos found: ${privateRepoStats.repos.length} with ${privateRepoStats.totalCommits} commits`)
     }
 
     // Process into stats (with private repo data merged)
-    const stats = processContributions(contributions, year, privateRepoStats)
+    // Pass clientDate for accurate totalDays calculation based on user's timezone
+    const stats = processContributions(contributions, year, privateRepoStats, clientDate)
 
     return NextResponse.json(stats)
   } catch (err) {
