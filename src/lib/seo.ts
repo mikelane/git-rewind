@@ -4,14 +4,15 @@
  */
 
 import type { Metadata } from 'next'
+import { FAQ_ITEMS } from './faq'
 
 export const SITE_CONFIG = {
   name: 'Git Rewind',
   shortName: 'Git Rewind',
   description: 'Your year in code, beautifully told. A privacy-focused GitHub year-in-review that respects your data.',
-  url: process.env.NEXT_PUBLIC_APP_URL || 'https://gitrewind.com',
+  url: process.env.NEXT_PUBLIC_APP_URL || 'https://git-rewind.dev',
   locale: 'en_US',
-  twitterHandle: '@gitrewind',
+  twitterHandle: '@mikelane',
   githubUrl: 'https://github.com/mikelane/git-rewind',
   author: {
     name: 'Mike Lane',
@@ -35,82 +36,77 @@ export const SITE_CONFIG = {
   ] as string[],
 }
 
-export const SEO_DEFAULTS: Metadata = {
-  title: {
-    default: 'Git Rewind — Your Year in Code',
-    template: '%s | Git Rewind',
-  },
-  description: SITE_CONFIG.description,
-  applicationName: SITE_CONFIG.name,
-  referrer: 'origin-when-cross-origin',
-  creator: SITE_CONFIG.author.name,
-  publisher: SITE_CONFIG.name,
-  formatDetection: {
-    email: false,
-    address: false,
-    telephone: false,
-  },
-  metadataBase: new URL(SITE_CONFIG.url),
-  alternates: {
-    canonical: '/',
-  },
-  openGraph: {
-    type: 'website',
-    siteName: SITE_CONFIG.name,
-    locale: SITE_CONFIG.locale,
-    url: SITE_CONFIG.url,
-    title: 'Git Rewind — Your Year in Code',
-    description: SITE_CONFIG.description,
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'Git Rewind - Your Year in Code',
-        type: 'image/png',
-      },
-    ],
-  },
-  twitter: {
-    card: 'summary_large_image',
-    title: 'Git Rewind — Your Year in Code',
-    description: SITE_CONFIG.description,
-    creator: SITE_CONFIG.twitterHandle,
-    images: ['/og-image.png'],
-  },
-  robots: {
-    index: true,
-    follow: true,
-    googleBot: {
+/** Bump when page content meaningfully changes; the sitemap reports it as lastModified. */
+export const SITE_LAST_UPDATED = new Date('2026-11-16T00:00:00.000Z')
+
+export function createSiteTitle(year: number): string {
+  return `Git Rewind — Your GitHub Wrapped ${year} | Year in Code`
+}
+
+export function createSiteDescription(year: number): string {
+  return `Get your GitHub Wrapped ${year}: your commits, streaks and languages in one year-in-review, with read-only GitHub App access and no stored data.`
+}
+
+/**
+ * Root metadata. Title and description depend on the marketing year, so this is
+ * called per render. Icons, manifest and social images come from the Next.js
+ * file conventions (icon, apple-icon, opengraph-image, twitter-image, manifest).
+ */
+export function createRootMetadata(year: number): Metadata {
+  const title = createSiteTitle(year)
+  const description = createSiteDescription(year)
+  return {
+    title: {
+      default: title,
+      template: '%s | Git Rewind',
+    },
+    description,
+    keywords: SITE_CONFIG.keywords,
+    applicationName: SITE_CONFIG.name,
+    referrer: 'origin-when-cross-origin',
+    creator: SITE_CONFIG.author.name,
+    publisher: SITE_CONFIG.name,
+    formatDetection: {
+      email: false,
+      address: false,
+      telephone: false,
+    },
+    metadataBase: new URL(SITE_CONFIG.url),
+    alternates: {
+      canonical: '/',
+    },
+    openGraph: {
+      type: 'website',
+      siteName: SITE_CONFIG.name,
+      locale: SITE_CONFIG.locale,
+      url: SITE_CONFIG.url,
+      title,
+      description,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      creator: SITE_CONFIG.twitterHandle,
+    },
+    robots: {
       index: true,
       follow: true,
-      'max-video-preview': -1,
-      'max-image-preview': 'large',
-      'max-snippet': -1,
+      googleBot: {
+        index: true,
+        follow: true,
+        'max-video-preview': -1,
+        'max-image-preview': 'large',
+        'max-snippet': -1,
+      },
     },
-  },
-  icons: {
-    icon: [
-      { url: '/favicon.ico', sizes: 'any' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
-    ],
-    shortcut: '/favicon.ico',
-  },
-  manifest: '/manifest.json',
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: 'black-translucent',
-    title: SITE_CONFIG.name,
-  },
-  verification: {
-    // Add these when you have them:
-    // google: 'your-google-verification-code',
-    // yandex: 'your-yandex-verification-code',
-  },
-  category: 'technology',
+    appleWebApp: {
+      capable: true,
+      statusBarStyle: 'black-translucent',
+      title: SITE_CONFIG.name,
+    },
+    category: 'technology',
+  }
 }
 
 // Page-specific metadata configurations
@@ -142,15 +138,6 @@ export function createOpenGraph(page: keyof typeof PAGE_METADATA, path: string) 
     url: `${SITE_CONFIG.url}${path}`,
     title: `${pageData.title} | Git Rewind`,
     description: pageData.description,
-    images: [
-      {
-        url: '/og-image.png',
-        width: 1200,
-        height: 630,
-        alt: 'Git Rewind - Your Year in Code',
-        type: 'image/png',
-      },
-    ],
   }
 }
 
@@ -162,7 +149,6 @@ export function createTwitter(page: keyof typeof PAGE_METADATA) {
     title: `${pageData.title} | Git Rewind`,
     description: pageData.description,
     creator: SITE_CONFIG.twitterHandle,
-    images: ['/og-image.png'],
   }
 }
 
@@ -178,14 +164,6 @@ export function generateWebsiteSchema() {
       '@type': 'Person',
       name: SITE_CONFIG.author.name,
       url: SITE_CONFIG.author.url,
-    },
-    potentialAction: {
-      '@type': 'SearchAction',
-      target: {
-        '@type': 'EntryPoint',
-        urlTemplate: `${SITE_CONFIG.url}/demo`,
-      },
-      'query-input': 'required name=search_term_string',
     },
   }
 }
@@ -208,13 +186,6 @@ export function generateSoftwareApplicationSchema() {
       '@type': 'Person',
       name: SITE_CONFIG.author.name,
       url: SITE_CONFIG.author.url,
-    },
-    aggregateRating: {
-      '@type': 'AggregateRating',
-      ratingValue: '5',
-      ratingCount: '1',
-      bestRating: '5',
-      worstRating: '1',
     },
     featureList: [
       'Privacy-focused GitHub analysis',
@@ -245,11 +216,40 @@ export function generateBreadcrumbSchema(items: { name: string; url: string }[])
 export function generateCombinedSchema(schemas: object[]) {
   return {
     '@context': 'https://schema.org',
-    '@graph': schemas.map(schema => {
+    '@graph': schemas.map((schema): Record<string, unknown> => {
       // Remove @context from individual schemas when combining
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
-      const { '@context': _context, ...rest } = schema as { '@context'?: string }
+      const { '@context': _context, ...rest } = schema as Record<string, unknown>
       return rest
     }),
   }
+}
+
+export function generateFaqSchema() {
+  return {
+    '@context': 'https://schema.org',
+    '@type': 'FAQPage' as const,
+    mainEntity: FAQ_ITEMS.map((item) => ({
+      '@type': 'Question' as const,
+      name: item.question,
+      acceptedAnswer: {
+        '@type': 'Answer' as const,
+        text: item.answer,
+      },
+    })),
+  }
+}
+
+/** JSON-LD graph for the home page: WebSite, SoftwareApplication and FAQPage. */
+export function generateHomeSchema() {
+  return generateCombinedSchema([
+    generateWebsiteSchema(),
+    generateSoftwareApplicationSchema(),
+    generateFaqSchema(),
+  ])
+}
+
+/** Serializes JSON-LD for inline <script> use; "<" is escaped so content cannot close the tag. */
+export function serializeJsonLd(data: object): string {
+  return JSON.stringify(data).replace(/</g, '\\u003c')
 }
