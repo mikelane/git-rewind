@@ -24,6 +24,12 @@ describe('FAQ_ITEMS', () => {
     expect(answers.every((answer) => answer.length > 0 && !answer.includes('<'))).toBe(true)
   })
 
+  it('It describes the session cookie as signed, because the token is signed with HS256 and not encrypted', () => {
+    const storageAnswer = FAQ_ITEMS.find((item) => item.question === 'Do you store my data?')?.answer
+    expect(storageAnswer).not.toMatch(/encrypted/i)
+    expect(storageAnswer).toMatch(/signed/i)
+  })
+
   it('It uses unique questions', () => {
     const questions = FAQ_ITEMS.map((item) => item.question)
     expect(new Set(questions).size).toBe(questions.length)

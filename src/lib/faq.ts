@@ -23,7 +23,7 @@ export const FAQ_ITEMS: readonly FaqItem[] = [
   {
     question: 'Do you store my data?',
     answer:
-      'Git Rewind has no database of user data. Your access token lives in an encrypted session cookie, and your stats are calculated on demand and cached in your own browser, not on our servers.',
+      'Git Rewind has no database of user data. Your access token lives in a signed, HTTP-only session cookie that expires after 24 hours, and your stats are calculated on demand and cached in your own browser, not on our servers.',
   },
   {
     question: 'Does it include my private repositories?',
