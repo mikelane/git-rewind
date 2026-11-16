@@ -1,13 +1,13 @@
 import type { Metadata, Viewport } from 'next'
-import Script from 'next/script'
 import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
-import { SEO_DEFAULTS, SITE_CONFIG, generateWebsiteSchema, generateSoftwareApplicationSchema, generateCombinedSchema } from '@/lib/seo'
+import { createRootMetadata } from '@/lib/seo'
+import { getMarketingYear } from '@/lib/marketing-year'
 import './globals.css'
 
-export const metadata: Metadata = {
-  ...SEO_DEFAULTS,
-  keywords: SITE_CONFIG.keywords,
+// Computed per render: the title and description carry the marketing year
+export function generateMetadata(): Metadata {
+  return createRootMetadata(getMarketingYear(new Date()))
 }
 
 export const viewport: Viewport = {
@@ -21,12 +21,6 @@ export const viewport: Viewport = {
   ],
   colorScheme: 'dark',
 }
-
-// Combined JSON-LD structured data (static, trusted content)
-const jsonLd = generateCombinedSchema([
-  generateWebsiteSchema(),
-  generateSoftwareApplicationSchema(),
-])
 
 export default function RootLayout({
   children,
@@ -43,14 +37,6 @@ export default function RootLayout({
         <link rel="dns-prefetch" href="https://api.github.com" />
       </head>
       <body className="min-h-screen bg-bg-base">
-        {/* JSON-LD Structured Data - static trusted content only */}
-        <Script
-          id="json-ld-schema"
-          type="application/ld+json"
-          strategy="afterInteractive"
-        >
-          {JSON.stringify(jsonLd)}
-        </Script>
         <a href="#main-content" className="skip-to-content">
           Skip to main content
         </a>

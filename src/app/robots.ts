@@ -7,13 +7,10 @@ export default function robots(): MetadataRoute.Robots {
       {
         userAgent: '*',
         allow: '/',
-        disallow: [
-          '/api/',
-          '/rewind',  // Private user data - don't index
-        ],
+        // /rewind is deliberately not disallowed: crawlers must be able to fetch it to see its noindex
+        disallow: ['/api/'],
       },
     ],
     sitemap: `${SITE_CONFIG.url}/sitemap.xml`,
-    host: SITE_CONFIG.url,
   }
 }

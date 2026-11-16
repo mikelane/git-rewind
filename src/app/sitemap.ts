@@ -1,5 +1,5 @@
 import { MetadataRoute } from 'next'
-import { SITE_CONFIG } from '@/lib/seo'
+import { SITE_CONFIG, SITE_LAST_UPDATED } from '@/lib/seo'
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const baseUrl = SITE_CONFIG.url
@@ -7,13 +7,13 @@ export default function sitemap(): MetadataRoute.Sitemap {
   return [
     {
       url: baseUrl,
-      lastModified: new Date(),
+      lastModified: SITE_LAST_UPDATED,
       changeFrequency: 'weekly',
       priority: 1,
     },
     {
       url: `${baseUrl}/demo`,
-      lastModified: new Date(),
+      lastModified: SITE_LAST_UPDATED,
       changeFrequency: 'monthly',
       priority: 0.8,
     },

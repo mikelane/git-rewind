@@ -1,16 +1,32 @@
 import { Suspense } from 'react'
 import { cn } from '@/lib/utils'
 import { ErrorMessage } from '@/components/error-message'
+import {
+  HowItWorksSection,
+  WhatYoullSeeSection,
+  WhyReadOnlySection,
+  FaqSection,
+  SiteFooter,
+} from '@/components/landing-sections'
+import { getMarketingYear } from '@/lib/marketing-year'
+import { generateHomeSchema, serializeJsonLd } from '@/lib/seo'
 
 // GitHub App slug for installation URL
 const GITHUB_APP_SLUG = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'git-rewind'
 
+// Re-render daily so the marketing year cannot freeze at build time
+export const revalidate = 86400
+
 export default function LandingPage() {
+  const year = getMarketingYear(new Date())
+
   return (
-    <main
-      id="main-content"
-      className="min-h-screen flex flex-col items-center justify-center px-6 text-center"
-    >
+    <main id="main-content">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: serializeJsonLd(generateHomeSchema()) }}
+      />
+      <section className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
       {/* Logo / Title - THE visual anchor - renders immediately for fast LCP */}
       <h1
         className={cn(
@@ -135,21 +151,15 @@ export default function LandingPage() {
           </div>
         </div>
       </div>
+      </section>
 
-      {/* Footer */}
-      <footer className="absolute bottom-6 left-0 right-0 text-center">
-        <p className="text-caption text-text-tertiary">
-          Open source. Privacy by design.{' '}
-          <a
-            href="https://github.com/mikelane/git-rewind"
-            className="text-accent hover:underline underline-offset-2"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            View source
-          </a>
-        </p>
-      </footer>
+      <div className="mx-auto max-w-3xl px-6">
+        <HowItWorksSection year={year} />
+        <WhatYoullSeeSection year={year} />
+        <WhyReadOnlySection />
+        <FaqSection />
+      </div>
+      <SiteFooter />
     </main>
   )
 }
