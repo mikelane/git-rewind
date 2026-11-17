@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState, useCallback, useMemo } from 'react'
+import { useRef, useMemo } from 'react'
 import {
   PrologueChapter,
   TheRhythmChapter,
@@ -11,121 +11,35 @@ import {
 } from '@/components/chapters'
 import { ProgressIndicator } from '@/components/ui'
 import { useScrollProgress, useKeyboardNavigation } from '@/hooks'
-import type { YearStats } from '@/lib/github'
-import { cn } from '@/lib/utils'
-import { getCached, setCache, clearCacheForYear } from '@/lib/cache'
+import { useYearStats, AVAILABLE_YEARS } from '@/hooks/use-year-stats'
 import { downloadRewind } from '@/lib/export'
-import { compareYears, type YearComparison } from '@/lib/comparisons'
-import { comparisonLogger } from '@/lib/logger'
 import { formatFavoriteDays } from '@/lib/format-days'
 import { classifyActivityLevel } from '@/lib/activity-level'
-
-const CURRENT_YEAR = new Date().getFullYear()
-const AVAILABLE_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
-
-/**
- * Get the client's local date in YYYY-MM-DD format.
- * Sent to the API so date ranges respect the user's timezone.
- */
-function getLocalDate(): string {
-  const now = new Date()
-  const year = now.getFullYear()
-  const month = String(now.getMonth() + 1).padStart(2, '0')
-  const day = String(now.getDate()).padStart(2, '0')
-  return `${year}-${month}-${day}`
-}
-
-type FetchError =
-  | { ok: false; kind: 'http'; status: number }
-  | { ok: false; kind: 'network' | 'invalid-body' }
-
-type FetchYearResult = { ok: true; stats: YearStats } | FetchError
-
-const LOGIN_PATH = '/api/auth/login'
-
-function isUnauthorized(result: FetchYearResult): boolean {
-  return !result.ok && result.kind === 'http' && result.status === 401
-}
-
-type LoadError = FetchError | { ok: false; kind: 'processing' }
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-/**
- * Shallow structural check on the /api/stats body. It rejects bodies that are
- * not stats at all (null, primitives, arrays, error payloads) before they are
- * cached; deeper corruption surfaces as a 'processing' error.
- */
-function isYearStats(value: unknown): value is YearStats {
-  return (
-    isRecord(value) &&
-    typeof value.year === 'number' &&
-    isRecord(value.user) &&
-    isRecord(value.rhythm)
-  )
-}
-
-const LOAD_ERROR_MESSAGE = "We couldn't load your GitHub data. This is usually temporary."
-
-function retryFailedMessage(failedRetries: number): string {
-  const attemptLabel = failedRetries > 1 ? ` (attempt ${failedRetries})` : ''
-  return `Still couldn't load your GitHub data${attemptLabel}. Try again in a moment.`
-}
+import { RewindError } from './rewind-error'
+import { YearSelector } from './year-selector'
 
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
 
 export default function RewindPage() {
-  const [stats, setStats] = useState<YearStats | null>(null)
-  const [comparison, setComparison] = useState<YearComparison | null>(null)
-  const [comparisonLoading, setComparisonLoading] = useState(false)
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<LoadError | null>(null)
-  const [retrying, setRetrying] = useState(false)
-  const [failedRetries, setFailedRetries] = useState(0)
-  const retryInFlightRef = useRef(false)
-  // Only the most recently started selected-year request may write stats or error state
-  const latestRequestRef = useRef(0)
-  const mountedRef = useRef(false)
-
-  // Set in the effect body, not only at init: StrictMode runs cleanup then setup again
-  useEffect(() => {
-    mountedRef.current = true
-    return () => {
-      mountedRef.current = false
-      latestRequestRef.current += 1
-    }
-  }, [])
-  // The focused Try again button unmounts when a retry succeeds; move focus to the story
-  const focusStoryAfterRetryRef = useRef(false)
-  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
-  const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
-  const [refreshing, setRefreshing] = useState(false)
-  // Populated only after mount so the first client render matches the server render
-  const [cachedYears, setCachedYears] = useState<Set<number>>(new Set())
-
-  const syncCachedYears = useCallback(() => {
-    if (!mountedRef.current) {
-      return
-    }
-    setCachedYears(new Set(AVAILABLE_YEARS.filter(year => getCached<YearStats>('stats', year))))
-  }, [])
-
-  useEffect(() => {
-    syncCachedYears()
-  }, [syncCachedYears])
-
-  // Ref to track current year for race condition prevention in background fetches
-  const currentYearRef = useRef(selectedYear)
-
-  // Keep ref in sync with selected year
-  useEffect(() => {
-    currentYearRef.current = selectedYear
-  }, [selectedYear])
-
   // Ref for the scroll container
   const mainRef = useRef<HTMLElement>(null)
+
+  const {
+    stats,
+    comparison,
+    comparisonLoading,
+    loading,
+    error,
+    retrying,
+    failedRetries,
+    selectedYear,
+    setSelectedYear,
+    loadingYears,
+    refreshing,
+    cachedYears,
+    handleRetry,
+    handleRefresh,
+  } = useYearStats(mainRef)
 
   // Refs for each chapter section
   const prologueRef = useRef<HTMLDivElement>(null)
@@ -153,237 +67,6 @@ export default function RewindPage() {
     chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const fetchYearStats = useCallback(async (year: number): Promise<FetchYearResult> => {
-    // Check cache first
-    const cached = getCached<YearStats>('stats', year)
-    if (cached) {
-      if (isYearStats(cached)) {
-        return { ok: true, stats: cached }
-      }
-      // A poisoned cache entry must not be shown; evict it and fetch from the network
-      clearCacheForYear('stats', year)
-    }
-
-    let response: Response
-    try {
-      // Include client's local date for timezone-aware date ranges
-      const clientDate = getLocalDate()
-      response = await fetch(`/api/stats?year=${year}&clientDate=${clientDate}`)
-    } catch {
-      return { ok: false, kind: 'network' }
-    }
-
-    if (!response.ok) {
-      return { ok: false, kind: 'http', status: response.status }
-    }
-
-    try {
-      const data: unknown = await response.json()
-      if (!isYearStats(data)) {
-        return { ok: false, kind: 'invalid-body' }
-      }
-      setCache('stats', year, data)
-      syncCachedYears()
-      return { ok: true, stats: data }
-    } catch {
-      return { ok: false, kind: 'invalid-body' }
-    }
-  }, [syncCachedYears])
-
-  // Compute comparison for current stats against previous year (if available)
-  const computeComparison = useCallback((currentStats: YearStats, year: number) => {
-    // Race condition prevention: Don't update comparison if user has switched years
-    if (currentYearRef.current !== year) {
-      comparisonLogger.debug(`Skipping comparison for ${year} - user switched to ${currentYearRef.current}`)
-      return
-    }
-
-    const previousYear = year - 1
-    const cachedPrevious = getCached<YearStats>('stats', previousYear)
-
-    if (cachedPrevious) {
-      comparisonLogger.debug(`Computing ${year} vs ${previousYear}`)
-      const yearComparison = compareYears(currentStats, cachedPrevious)
-      comparisonLogger.debug('Insights:', yearComparison.narrativeInsights)
-      setComparison(yearComparison)
-    } else {
-      comparisonLogger.debug(`Previous year ${previousYear} not cached yet`)
-      setComparison(null)
-    }
-  }, [])
-
-  const showLoadedStats = useCallback((year: number, currentStats: YearStats) => {
-    setStats(currentStats)
-
-    // Check if previous year is already cached
-    const previousYear = year - 1
-    const cachedPrevious = getCached<YearStats>('stats', previousYear)
-
-    if (cachedPrevious) {
-      // Previous year cached - compute comparison immediately
-      computeComparison(currentStats, year)
-    } else if (AVAILABLE_YEARS.includes(previousYear)) {
-      // Previous year not cached but fetchable - show loading state while the prefetch loads it
-      setComparisonLoading(true)
-    }
-
-    // Background fetch: load other years for future comparisons
-    // This populates the cache so switching years is instant
-    const otherYears = AVAILABLE_YEARS.filter(y => y !== year)
-    otherYears.forEach(otherYear => {
-      // Check if already cached before fetching
-      if (!getCached<YearStats>('stats', otherYear)) {
-        comparisonLogger.debug(`Background fetching ${otherYear}`)
-        setLoadingYears(prev => new Set([...Array.from(prev), otherYear]))
-        fetchYearStats(otherYear)
-          .then(otherResult => {
-            if (!mountedRef.current) {
-              return
-            }
-            setLoadingYears(prev => {
-              const next = new Set(prev)
-              next.delete(otherYear)
-              return next
-            })
-
-            // RACE CONDITION FIX: Check if user is still viewing the same year
-            // before updating comparison. If user switched years while background
-            // fetch was in progress, skip the comparison update.
-            const stillOnSameYear = currentYearRef.current === year
-
-            if (otherResult.ok) {
-              comparisonLogger.debug(`Cached ${otherYear}`)
-              // If the background fetch completed the previous year, update comparison
-              // Only if user is still on the same year (race condition prevention)
-              if (otherYear === year - 1 && stillOnSameYear) {
-                // Re-compute comparison now that previous year is available
-                setComparisonLoading(false)
-                computeComparison(currentStats, year)
-              }
-            } else if (otherYear === year - 1 && stillOnSameYear) {
-              // Failed to fetch previous year - stop showing loading
-              setComparisonLoading(false)
-            }
-          })
-          .catch((error: unknown) => {
-            // Handle promise rejection to prevent unhandled rejection errors
-            comparisonLogger.error(`Failed to fetch ${otherYear}:`, error)
-            if (!mountedRef.current) {
-              return
-            }
-            setLoadingYears(prev => {
-              const next = new Set(prev)
-              next.delete(otherYear)
-              return next
-            })
-            // If this was the previous year, stop showing comparison loading
-            if (otherYear === year - 1 && currentYearRef.current === year) {
-              setComparisonLoading(false)
-            }
-          })
-      }
-    })
-  }, [fetchYearStats, computeComparison])
-
-  const applyFetchResult = useCallback((year: number, result: FetchYearResult): LoadError | null => {
-    if (!result.ok) {
-      return result
-    }
-    try {
-      showLoadedStats(year, result.stats)
-      return null
-    } catch (processingError) {
-      comparisonLogger.error(`Failed to process stats for ${year}:`, processingError)
-      // A poisoned cache entry would fail again on every retry, so force a refetch
-      clearCacheForYear('stats', year)
-      clearCacheForYear('stats', year - 1)
-      return { ok: false, kind: 'processing' }
-    }
-  }, [showLoadedStats])
-
-  const startSelectedYearRequest = useCallback(() => {
-    latestRequestRef.current += 1
-    return latestRequestRef.current
-  }, [])
-
-  const isLatestRequest = useCallback((requestId: number) => latestRequestRef.current === requestId, [])
-
-  // Only a selected-year result may force re-auth; background prefetches never call this
-  const redirectIfUnauthorized = useCallback((result: FetchYearResult) => {
-    if (isUnauthorized(result)) {
-      window.location.href = LOGIN_PATH
-    }
-  }, [])
-
-  const fetchStats = useCallback(async (year: number) => {
-    const requestId = startSelectedYearRequest()
-    setLoading(true)
-    setError(null)
-    setFailedRetries(0)
-    setComparison(null)
-    setComparisonLoading(false)
-
-    try {
-      // Fetch the selected year
-      const result = await fetchYearStats(year)
-      if (!isLatestRequest(requestId)) {
-        return
-      }
-      redirectIfUnauthorized(result)
-      setError(applyFetchResult(year, result))
-    } finally {
-      if (isLatestRequest(requestId)) {
-        setLoading(false)
-      }
-    }
-  }, [fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest, redirectIfUnauthorized])
-
-  const handleRetry = useCallback(async () => {
-    if (retryInFlightRef.current) {
-      return
-    }
-    retryInFlightRef.current = true
-    setRetrying(true)
-    const requestId = startSelectedYearRequest()
-    try {
-      const result = await fetchYearStats(selectedYear)
-      if (!isLatestRequest(requestId)) {
-        return
-      }
-      redirectIfUnauthorized(result)
-      const loadError = applyFetchResult(selectedYear, result)
-      setError(loadError)
-      setFailedRetries(count => (loadError === null ? 0 : count + 1))
-      focusStoryAfterRetryRef.current = loadError === null
-    } finally {
-      retryInFlightRef.current = false
-      if (mountedRef.current) {
-        setRetrying(false)
-      }
-    }
-  }, [selectedYear, fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest, redirectIfUnauthorized])
-
-  const handleRefresh = useCallback(async () => {
-    setRefreshing(true)
-    clearCacheForYear('stats', selectedYear)
-    syncCachedYears()
-    await fetchStats(selectedYear)
-    if (mountedRef.current) {
-      setRefreshing(false)
-    }
-  }, [selectedYear, fetchStats, syncCachedYears])
-
-  useEffect(() => {
-    fetchStats(selectedYear)
-  }, [selectedYear, fetchStats])
-
-  useEffect(() => {
-    if (error === null && focusStoryAfterRetryRef.current) {
-      focusStoryAfterRetryRef.current = false
-      mainRef.current?.focus()
-    }
-  }, [error])
-
   // Compute activity level based on stats
   const activityLevel = useMemo(() => {
     if (!stats) {
@@ -396,35 +79,7 @@ export default function RewindPage() {
   }, [stats])
 
   if (error) {
-    return (
-      <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
-        <h1 className="font-display text-display-sm text-text-primary mb-4">
-          Something went wrong
-        </h1>
-        <p role="status" className="text-body text-text-secondary mb-8 max-w-md">
-          {failedRetries > 0 ? retryFailedMessage(failedRetries) : LOAD_ERROR_MESSAGE}
-        </p>
-        <button
-          type="button"
-          onClick={handleRetry}
-          aria-disabled={retrying}
-          className={cn(
-            'px-6 py-3 rounded-xl',
-            'bg-accent text-text-inverse font-medium',
-            'hover:bg-accent-hover transition-colors',
-            'aria-disabled:cursor-not-allowed aria-disabled:opacity-70'
-          )}
-        >
-          Try again
-        </button>
-        <a
-          href={LOGIN_PATH}
-          className="mt-4 inline-flex min-h-11 items-center text-body text-text-secondary underline hover:text-text-primary"
-        >
-          Sign in again
-        </a>
-      </main>
-    )
+    return <RewindError failedRetries={failedRetries} retrying={retrying} onRetry={handleRetry} />
   }
 
   // Convert stats to chapter props format
@@ -498,74 +153,16 @@ export default function RewindPage() {
 
   return (
     <main id="main-content" ref={mainRef} tabIndex={-1} className="relative h-screen overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0 snap-y snap-proximity md:snap-mandatory">
-      {/* Year selector */}
-      <div className="fixed top-2 left-4 z-50 flex items-center gap-2">
-        <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
-        {AVAILABLE_YEARS.map((year) => {
-          const isLoading = loadingYears.has(year)
-          const isCached = cachedYears.has(year)
-
-          return (
-            <button
-              key={year}
-              onClick={() => setSelectedYear(year)}
-              disabled={loading && selectedYear === year}
-              className="group/pill inline-flex min-h-11 min-w-11 items-center justify-center"
-              aria-label={`View ${year}${isLoading ? ' (loading)' : ''}`}
-            >
-              <span
-                className={cn(
-                  'px-3 py-1.5 text-caption font-medium rounded-full transition-all duration-200',
-                  selectedYear === year
-                    ? 'bg-accent text-text-inverse'
-                    : isCached
-                      ? 'bg-bg-surface text-text-secondary group-hover/pill:bg-bg-elevated group-hover/pill:text-text-primary'
-                      : 'bg-bg-surface/50 text-text-tertiary group-hover/pill:bg-bg-elevated group-hover/pill:text-text-primary',
-                  isLoading && 'animate-pulse',
-                  loading && selectedYear === year && 'opacity-70'
-                )}
-              >
-                {year}
-              </span>
-            </button>
-          )
-        })}
-        <button
-          onClick={handleRefresh}
-          disabled={loading || refreshing}
-          className={cn(
-            'group/refresh -ml-2 inline-flex min-h-11 min-w-11 items-center justify-center',
-            'disabled:cursor-not-allowed'
-          )}
-          aria-label="Refresh stats"
-          title="Refresh stats (bypass cache)"
-        >
-          <span
-            className={cn(
-              'p-1.5 rounded-full transition-all duration-200',
-              'bg-bg-surface/50 text-text-tertiary',
-              'group-hover/refresh:bg-bg-elevated group-hover/refresh:text-text-secondary',
-              'group-disabled/refresh:opacity-50'
-            )}
-          >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              width="14"
-              height="14"
-              viewBox="0 0 24 24"
-              fill="none"
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-              className={cn(refreshing && 'animate-spin')}
-            >
-              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-              <path d="M21 3v5h-5" />
-            </svg>
-          </span>
-        </button>
-      </div>
+      <YearSelector
+        years={AVAILABLE_YEARS}
+        selectedYear={selectedYear}
+        loading={loading}
+        refreshing={refreshing}
+        loadingYears={loadingYears}
+        cachedYears={cachedYears}
+        onSelectYear={setSelectedYear}
+        onRefresh={handleRefresh}
+      />
 
       {/* Progress indicator */}
       <ProgressIndicator
