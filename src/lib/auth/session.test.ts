@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { SignJWT, EncryptJWT, compactDecrypt, decodeProtectedHeader, base64url } from 'jose'
+import { SignJWT, EncryptJWT, compactDecrypt, jwtDecrypt, decodeProtectedHeader, base64url } from 'jose'
 
 const mockCookieStore = {
   get: vi.fn(),
@@ -121,12 +121,38 @@ describe('session cookie', () => {
       vi.stubEnv('SESSION_SECRET', '')
 
       await expect(setSession('test-access-token')).rejects.toThrow('SESSION_SECRET environment variable is required')
+      expect(mockCookieStore.set).not.toHaveBeenCalled()
     })
 
     it('throws when SESSION_SECRET is shorter than 32 characters', async () => {
       vi.stubEnv('SESSION_SECRET', 'too-short')
 
       await expect(setSession('test-access-token')).rejects.toThrow('at least 32 characters')
+      expect(mockCookieStore.set).not.toHaveBeenCalled()
+    })
+
+    it.each([31])('rejects a %i-character SESSION_SECRET without setting a cookie', async (length) => {
+      vi.stubEnv('SESSION_SECRET', 'x'.repeat(length))
+
+      await expect(setSession('test-access-token')).rejects.toThrow('at least 32 characters')
+      expect(mockCookieStore.set).not.toHaveBeenCalled()
+    })
+
+    it.each([32])('accepts a %i-character SESSION_SECRET and sets a cookie', async (length) => {
+      vi.stubEnv('SESSION_SECRET', 'x'.repeat(length))
+
+      await expect(setSession('test-access-token')).resolves.toBeUndefined()
+      expect(mockCookieStore.set).toHaveBeenCalledTimes(1)
+    })
+
+    it('stores a token that expires 24 hours after it is issued', async () => {
+      await setSession('test-access-token')
+
+      const { payload } = await jwtDecrypt(mockCookieStore.set.mock.calls[0][1], await sessionKey(SECRET), {
+        keyManagementAlgorithms: ['dir'],
+        contentEncryptionAlgorithms: ['A256GCM'],
+      })
+      expect((payload.exp ?? 0) - (payload.iat ?? 0)).toBe(86400)
     })
   })
 
