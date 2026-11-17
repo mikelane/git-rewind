@@ -83,6 +83,26 @@ describe('RewindPage', () => {
     global.fetch = originalFetch
   })
 
+  describe('tap targets', () => {
+    const currentYear = new Date().getFullYear()
+
+    it.each(['min-h-11', 'min-w-11'])('renders the year selector button with %s', async (utility) => {
+      render(<RewindPage />)
+
+      const yearButton = await screen.findByRole('button', { name: new RegExp(`View ${currentYear}`) })
+
+      expect(yearButton).toHaveClass(utility)
+    })
+
+    it.each(['min-h-11', 'min-w-11'])('renders the refresh button with %s', async (utility) => {
+      render(<RewindPage />)
+
+      const refreshButton = await screen.findByRole('button', { name: 'Refresh stats' })
+
+      expect(refreshButton).toHaveClass(utility)
+    })
+  })
+
   describe('Bug #5: Unhandled promise rejection in background fetch', () => {
     it('handles fetch rejection gracefully without unhandled promise rejection', async () => {
       // First call succeeds (current year)

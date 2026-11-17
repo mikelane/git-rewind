@@ -335,7 +335,7 @@ export default function RewindPage() {
   return (
     <main id="main-content" ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
       {/* Year selector */}
-      <div className="fixed top-4 left-4 z-50 flex items-center gap-2">
+      <div className="fixed top-2 left-4 z-50 flex items-center gap-2">
         <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
         {AVAILABLE_YEARS.map((year) => {
           const isLoading = loadingYears.has(year)
@@ -346,19 +346,23 @@ export default function RewindPage() {
               key={year}
               onClick={() => setSelectedYear(year)}
               disabled={loading && selectedYear === year}
-              className={cn(
-                'px-3 py-1.5 text-caption font-medium rounded-full transition-all duration-200',
-                selectedYear === year
-                  ? 'bg-accent text-text-inverse'
-                  : isCached
-                    ? 'bg-bg-surface text-text-secondary hover:bg-bg-elevated hover:text-text-primary'
-                    : 'bg-bg-surface/50 text-text-tertiary hover:bg-bg-elevated hover:text-text-primary',
-                isLoading && 'animate-pulse',
-                loading && selectedYear === year && 'opacity-70'
-              )}
+              className="group/pill inline-flex min-h-11 min-w-11 items-center justify-center"
               aria-label={`View ${year}${isLoading ? ' (loading)' : ''}`}
             >
-              {year}
+              <span
+                className={cn(
+                  'px-3 py-1.5 text-caption font-medium rounded-full transition-all duration-200',
+                  selectedYear === year
+                    ? 'bg-accent text-text-inverse'
+                    : isCached
+                      ? 'bg-bg-surface text-text-secondary group-hover/pill:bg-bg-elevated group-hover/pill:text-text-primary'
+                      : 'bg-bg-surface/50 text-text-tertiary group-hover/pill:bg-bg-elevated group-hover/pill:text-text-primary',
+                  isLoading && 'animate-pulse',
+                  loading && selectedYear === year && 'opacity-70'
+                )}
+              >
+                {year}
+              </span>
             </button>
           )
         })}
@@ -366,29 +370,36 @@ export default function RewindPage() {
           onClick={handleRefresh}
           disabled={loading || refreshing}
           className={cn(
-            'p-1.5 rounded-full transition-all duration-200',
-            'bg-bg-surface/50 text-text-tertiary',
-            'hover:bg-bg-elevated hover:text-text-secondary',
-            'disabled:opacity-50 disabled:cursor-not-allowed'
+            'group/refresh -ml-2 inline-flex min-h-11 min-w-11 items-center justify-center',
+            'disabled:cursor-not-allowed'
           )}
           aria-label="Refresh stats"
           title="Refresh stats (bypass cache)"
         >
-          <svg
-            xmlns="http://www.w3.org/2000/svg"
-            width="14"
-            height="14"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            className={cn(refreshing && 'animate-spin')}
+          <span
+            className={cn(
+              'p-1.5 rounded-full transition-all duration-200',
+              'bg-bg-surface/50 text-text-tertiary',
+              'group-hover/refresh:bg-bg-elevated group-hover/refresh:text-text-secondary',
+              'group-disabled/refresh:opacity-50'
+            )}
           >
-            <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
-            <path d="M21 3v5h-5" />
-          </svg>
+            <svg
+              xmlns="http://www.w3.org/2000/svg"
+              width="14"
+              height="14"
+              viewBox="0 0 24 24"
+              fill="none"
+              stroke="currentColor"
+              strokeWidth="2"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              className={cn(refreshing && 'animate-spin')}
+            >
+              <path d="M21 12a9 9 0 1 1-9-9c2.52 0 4.93 1 6.74 2.74L21 8" />
+              <path d="M21 3v5h-5" />
+            </svg>
+          </span>
         </button>
       </div>
 
