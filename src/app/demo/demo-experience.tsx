@@ -70,14 +70,14 @@ const collaborationData: TheCollaborationData = {
   pullRequestsReviewed: 89,
   issuesClosed: 67,
   commentsWritten: 423,
-  uniqueCollaborators: 23,
+  uniqueCollaborators: 19,
   reviewStyle: 'thorough',
   topCollaborators: [
-    { username: 'hubot', interactions: 47 },
-    { username: 'dependabot', interactions: 34 },
-    { username: 'github-actions', interactions: 28 },
-    { username: 'renovate', interactions: 19 },
-    { username: 'mona', interactions: 15 },
+    { username: 'mona', interactions: 47 },
+    { username: 'octocat', interactions: 34 },
+    { username: 'defunkt', interactions: 28 },
+    { username: 'mojombo', interactions: 19 },
+    { username: 'pjhyett', interactions: 15 },
   ],
 }
 
