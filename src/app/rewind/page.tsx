@@ -35,6 +35,14 @@ function getLocalDate(): string {
   return `${year}-${month}-${day}`
 }
 
+type FetchYearResult =
+  | { ok: true; stats: YearStats }
+  | { ok: false; kind: 'network' | 'http' | 'invalid-body'; status?: number }
+
+type FetchError = Extract<FetchYearResult, { ok: false }>
+
+const LOAD_ERROR_MESSAGE = "We couldn't load your GitHub data. This is usually temporary."
+
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
 
 export default function RewindPage() {
@@ -42,7 +50,9 @@ export default function RewindPage() {
   const [comparison, setComparison] = useState<YearComparison | null>(null)
   const [comparisonLoading, setComparisonLoading] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
+  const [error, setError] = useState<{ kind: FetchError['kind']; status?: number } | null>(null)
+  const [retrying, setRetrying] = useState(false)
+  const retryInFlightRef = useRef(false)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
   const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
@@ -94,33 +104,38 @@ export default function RewindPage() {
     chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
   }
 
-  const fetchYearStats = useCallback(async (year: number): Promise<YearStats | null> => {
+  const fetchYearStats = useCallback(async (year: number): Promise<FetchYearResult> => {
     // Check cache first
     const cached = getCached<YearStats>('stats', year)
     if (cached) {
-      return cached
+      return { ok: true, stats: cached }
     }
 
+    let response: Response
     try {
       // Include client's local date for timezone-aware date ranges
       const clientDate = getLocalDate()
-      const response = await fetch(`/api/stats?year=${year}&clientDate=${clientDate}`)
+      response = await fetch(`/api/stats?year=${year}&clientDate=${clientDate}`)
+    } catch {
+      return { ok: false, kind: 'network' }
+    }
 
-      if (response.status === 401) {
-        window.location.href = '/api/auth/login'
-        return null
-      }
+    if (response.status === 401) {
+      window.location.href = '/api/auth/login'
+      return { ok: false, kind: 'http', status: 401 }
+    }
 
-      if (!response.ok) {
-        return null
-      }
+    if (!response.ok) {
+      return { ok: false, kind: 'http', status: response.status }
+    }
 
-      const data = await response.json()
+    try {
+      const data: YearStats = await response.json()
       setCache('stats', year, data)
       syncCachedYears()
-      return data
+      return { ok: true, stats: data }
     } catch {
-      return null
+      return { ok: false, kind: 'invalid-body' }
     }
   }, [syncCachedYears])
 
@@ -146,6 +161,73 @@ export default function RewindPage() {
     }
   }, [])
 
+  const showLoadedStats = useCallback((year: number, currentStats: YearStats) => {
+    setStats(currentStats)
+
+    // Check if previous year is already cached
+    const previousYear = year - 1
+    const cachedPrevious = getCached<YearStats>('stats', previousYear)
+
+    if (cachedPrevious) {
+      // Previous year cached - compute comparison immediately
+      computeComparison(currentStats, year)
+    } else {
+      // Previous year not cached - show loading state while we fetch it
+      setComparisonLoading(true)
+    }
+
+    // Background fetch: load other years for future comparisons
+    // This populates the cache so switching years is instant
+    const otherYears = AVAILABLE_YEARS.filter(y => y !== year)
+    otherYears.forEach(otherYear => {
+      // Check if already cached before fetching
+      if (!getCached<YearStats>('stats', otherYear)) {
+        comparisonLogger.debug(`Background fetching ${otherYear}`)
+        setLoadingYears(prev => new Set([...Array.from(prev), otherYear]))
+        fetchYearStats(otherYear)
+          .then(otherResult => {
+            setLoadingYears(prev => {
+              const next = new Set(prev)
+              next.delete(otherYear)
+              return next
+            })
+
+            // RACE CONDITION FIX: Check if user is still viewing the same year
+            // before updating comparison. If user switched years while background
+            // fetch was in progress, skip the comparison update.
+            const stillOnSameYear = currentYearRef.current === year
+
+            if (otherResult.ok) {
+              comparisonLogger.debug(`Cached ${otherYear}`)
+              // If the background fetch completed the previous year, update comparison
+              // Only if user is still on the same year (race condition prevention)
+              if (otherYear === year - 1 && stillOnSameYear) {
+                // Re-compute comparison now that previous year is available
+                setComparisonLoading(false)
+                computeComparison(currentStats, year)
+              }
+            } else if (otherYear === year - 1 && stillOnSameYear) {
+              // Failed to fetch previous year - stop showing loading
+              setComparisonLoading(false)
+            }
+          })
+          .catch(error => {
+            // Handle promise rejection to prevent unhandled rejection errors
+            comparisonLogger.error(`Failed to fetch ${otherYear}:`, error)
+            setLoadingYears(prev => {
+              const next = new Set(prev)
+              next.delete(otherYear)
+              return next
+            })
+            // If this was the previous year, stop showing comparison loading
+            if (otherYear === year - 1) {
+              setComparisonLoading(false)
+            }
+          })
+      }
+    })
+  }, [fetchYearStats, computeComparison])
+
   const fetchStats = useCallback(async (year: number) => {
     setLoading(true)
     setError(null)
@@ -154,82 +236,37 @@ export default function RewindPage() {
 
     try {
       // Fetch the selected year
-      const currentStats = await fetchYearStats(year)
+      const result = await fetchYearStats(year)
 
-      if (!currentStats) {
-        throw new Error('Failed to fetch stats')
+      if (!result.ok) {
+        setError({ kind: result.kind, status: result.status })
+        return
       }
-
-      setStats(currentStats)
-
-      // Check if previous year is already cached
-      const previousYear = year - 1
-      const cachedPrevious = getCached<YearStats>('stats', previousYear)
-
-      if (cachedPrevious) {
-        // Previous year cached - compute comparison immediately
-        computeComparison(currentStats, year)
-      } else {
-        // Previous year not cached - show loading state while we fetch it
-        setComparisonLoading(true)
-      }
-
-      // Background fetch: load other years for future comparisons
-      // This populates the cache so switching years is instant
-      const otherYears = AVAILABLE_YEARS.filter(y => y !== year)
-      otherYears.forEach(otherYear => {
-        // Check if already cached before fetching
-        if (!getCached<YearStats>('stats', otherYear)) {
-          comparisonLogger.debug(`Background fetching ${otherYear}`)
-          setLoadingYears(prev => new Set([...Array.from(prev), otherYear]))
-          fetchYearStats(otherYear)
-            .then(otherStats => {
-              setLoadingYears(prev => {
-                const next = new Set(prev)
-                next.delete(otherYear)
-                return next
-              })
-
-              // RACE CONDITION FIX: Check if user is still viewing the same year
-              // before updating comparison. If user switched years while background
-              // fetch was in progress, skip the comparison update.
-              const stillOnSameYear = currentYearRef.current === year
-
-              if (otherStats) {
-                comparisonLogger.debug(`Cached ${otherYear}`)
-                // If the background fetch completed the previous year, update comparison
-                // Only if user is still on the same year (race condition prevention)
-                if (otherYear === year - 1 && stillOnSameYear) {
-                  // Re-compute comparison now that previous year is available
-                  setComparisonLoading(false)
-                  computeComparison(currentStats, year)
-                }
-              } else if (otherYear === year - 1 && stillOnSameYear) {
-                // Failed to fetch previous year - stop showing loading
-                setComparisonLoading(false)
-              }
-            })
-            .catch(error => {
-              // Handle promise rejection to prevent unhandled rejection errors
-              comparisonLogger.error(`Failed to fetch ${otherYear}:`, error)
-              setLoadingYears(prev => {
-                const next = new Set(prev)
-                next.delete(otherYear)
-                return next
-              })
-              // If this was the previous year, stop showing comparison loading
-              if (otherYear === year - 1) {
-                setComparisonLoading(false)
-              }
-            })
-        }
-      })
-    } catch {
-      setError('Failed to load your GitHub data. Please try again.')
+      showLoadedStats(year, result.stats)
     } finally {
       setLoading(false)
     }
-  }, [fetchYearStats, computeComparison])
+  }, [fetchYearStats, showLoadedStats])
+
+  const handleRetry = useCallback(async () => {
+    if (retryInFlightRef.current) {
+      return
+    }
+    retryInFlightRef.current = true
+    setRetrying(true)
+    try {
+      const result = await fetchYearStats(selectedYear)
+      if (result.ok) {
+        setError(null)
+        showLoadedStats(selectedYear, result.stats)
+      } else {
+        setError({ kind: result.kind, status: result.status })
+      }
+    } finally {
+      retryInFlightRef.current = false
+      setRetrying(false)
+    }
+  }, [selectedYear, fetchYearStats, showLoadedStats])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -260,16 +297,25 @@ export default function RewindPage() {
         <h1 className="font-display text-display-sm text-text-primary mb-4">
           Something went wrong
         </h1>
-        <p className="text-body text-text-secondary mb-8 max-w-md">{error}</p>
-        <a
-          href="/api/auth/login"
+        <p className="text-body text-text-secondary mb-8 max-w-md">{LOAD_ERROR_MESSAGE}</p>
+        <button
+          type="button"
+          onClick={handleRetry}
+          disabled={retrying}
           className={cn(
             'px-6 py-3 rounded-xl',
             'bg-accent text-text-inverse font-medium',
-            'hover:bg-accent-hover transition-colors'
+            'hover:bg-accent-hover transition-colors',
+            'disabled:cursor-not-allowed disabled:opacity-70'
           )}
         >
           Try again
+        </button>
+        <a
+          href="/api/auth/login"
+          className="mt-4 inline-flex min-h-11 items-center text-body text-text-secondary underline hover:text-text-primary"
+        >
+          Sign in again
         </a>
       </main>
     )
