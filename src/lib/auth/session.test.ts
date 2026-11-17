@@ -3,30 +3,21 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { SignJWT, EncryptJWT, compactDecrypt, jwtDecrypt, decodeProtectedHeader, base64url } from 'jose'
 
 const mockCookieStore = {
-  get: vi.fn(),
-  set: vi.fn(),
-  delete: vi.fn(),
+  get: vi.fn<(name: string) => { value: string } | undefined>(),
+  set: vi.fn<(name: string, value: string, options: Record<string, unknown>) => void>(),
+  delete: vi.fn<(name: string) => void>(),
 }
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }))
 
+import { sessionKey } from '@/test/session-key'
 import { getSession, setSession, clearSession } from './session'
 
 const SECRET = 'a-session-secret-that-is-at-least-32-chars-long'
 
 const OTHER_SECRET = 'another-secret-that-is-also-32-chars-long!'
-
-async function sessionKey(secret: string): Promise<Uint8Array> {
-  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), 'HKDF', false, ['deriveBits'])
-  const bits = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: new TextEncoder().encode('git-rewind session cookie') },
-    material,
-    256
-  )
-  return new Uint8Array(bits)
-}
 
 async function encryptToken(payload: Record<string, unknown>, secret = SECRET, expiresIn = '1h') {
   return new EncryptJWT(payload)
@@ -46,12 +37,16 @@ async function signOnlyToken(payload: Record<string, unknown>, secret = SECRET) 
 
 describe('session cookie', () => {
   beforeEach(() => {
+    vi.useFakeTimers({ toFake: ['Date'] })
+    vi.setSystemTime(new Date('2024-06-01T12:00:00.999Z'))
     vi.clearAllMocks()
+    mockCookieStore.get.mockReset()
     vi.stubEnv('SESSION_SECRET', SECRET)
     vi.stubEnv('NODE_ENV', 'test')
   })
 
   afterEach(() => {
+    vi.useRealTimers()
     vi.unstubAllEnvs()
   })
 
