@@ -1,6 +1,7 @@
 import { SignJWT, importPKCS8 } from 'jose'
 
-import { hasInstallationToken, hasLogin, isArrayOf, isInstallation } from './guards'
+import { authLogger } from '../logger'
+import { hasInstallationToken, hasLogin, isInstallation } from './guards'
 
 const GITHUB_API_URL = 'https://api.github.com'
 
@@ -8,7 +9,6 @@ interface Installation {
   id: number
   account: {
     login: string
-    type: string
   }
 }
 
@@ -109,9 +109,14 @@ export async function getUserInstallation(userAccessToken: string): Promise<Inst
     throw new Error('Failed to get installations')
   }
 
-  const installations: unknown = await installationsResponse.json()
-  if (!isArrayOf(isInstallation)(installations)) {
+  const installationsBody: unknown = await installationsResponse.json()
+  if (!Array.isArray(installationsBody)) {
     throw new Error('GitHub returned an unexpected installations response')
+  }
+  const installations = installationsBody.filter(isInstallation)
+  const droppedCount = installationsBody.length - installations.length
+  if (droppedCount > 0) {
+    authLogger.warn(`Dropped ${droppedCount} malformed installation(s) from GitHub response`)
   }
 
   // Find installation for this user

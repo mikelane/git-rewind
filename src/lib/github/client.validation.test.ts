@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GitHubClient } from './client'
+import { githubLogger } from '../logger'
 
 describe('GitHubClient REST response validation', () => {
   const fetchMock = vi.fn()
@@ -21,16 +22,46 @@ describe('GitHubClient REST response validation', () => {
     it.each([
       ['an object instead of a list', { message: 'Not Found' }],
       ['null', null],
-      ['a list containing null', [null]],
-      ['a repo without full_name', [{ private: true, pushed_at: '2024-01-01T00:00:00Z' }]],
-      ['a repo with a non-boolean private flag', [{ full_name: 'o/r', private: 'yes', pushed_at: '2024-01-01T00:00:00Z' }]],
-      ['a repo with a non-string pushed_at', [{ full_name: 'o/r', private: true, pushed_at: 5 }]],
     ])('rejects with a handled error for %s', async (_label, body) => {
       respondWith(body)
 
       await expect(new GitHubClient('test-access-token').getPrivateRepos()).rejects.toThrow(
         'GitHub REST API returned an unexpected response'
       )
+    })
+
+    it.each([
+      ['null', null],
+      ['a repo without full_name', { private: true, pushed_at: '2024-06-01T00:00:00Z' }],
+      ['a repo with a non-boolean private flag', { full_name: 'o/bad', private: 'yes', pushed_at: '2024-06-01T00:00:00Z' }],
+      ['a repo with a non-string pushed_at', { full_name: 'o/bad', private: true, pushed_at: 5 }],
+    ])('drops a malformed item that is %s and returns the valid repos', async (_label, malformed) => {
+      respondWith([malformed, { full_name: 'o/active', private: true, pushed_at: '2024-06-01T00:00:00Z' }])
+
+      const repos = await new GitHubClient('test-access-token').getPrivateRepos(2024)
+
+      expect(repos.map(r => r.full_name)).toEqual(['o/active'])
+    })
+
+    it('returns only the active repos when one repo has a null pushed_at', async () => {
+      respondWith([
+        { full_name: 'o/never-pushed', private: true, pushed_at: null },
+        { full_name: 'o/active', private: true, pushed_at: '2024-06-01T00:00:00Z' },
+      ])
+
+      const repos = await new GitHubClient('test-access-token').getPrivateRepos(2024)
+
+      expect(repos.map(r => r.full_name)).toEqual(['o/active'])
+    })
+
+    it('warns with the count of dropped repos', async () => {
+      const warnSpy = vi.spyOn(githubLogger, 'warn').mockImplementation(() => {})
+      respondWith([null, { full_name: 'o/active', private: true, pushed_at: '2024-06-01T00:00:00Z' }])
+
+      await new GitHubClient('test-access-token').getPrivateRepos(2024)
+
+      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Dropped 1'))
+      warnSpy.mockRestore()
     })
 
     it('returns private repos from a well-formed response', async () => {

@@ -3,11 +3,15 @@ export type Guard<T> = (value: unknown) => value is T
 export interface PrivateRepoSummary {
   full_name: string
   private: boolean
-  pushed_at: string
+  pushed_at: string | null
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+export function isArray(value: unknown): value is unknown[] {
+  return Array.isArray(value)
 }
 
 export function isArrayOf<T>(isItem: Guard<T>): Guard<T[]> {
@@ -23,7 +27,7 @@ export function isPrivateRepoSummary(value: unknown): value is PrivateRepoSummar
     isRecord(value) &&
     typeof value.full_name === 'string' &&
     typeof value.private === 'boolean' &&
-    typeof value.pushed_at === 'string'
+    (typeof value.pushed_at === 'string' || value.pushed_at === null)
   )
 }
 
@@ -37,14 +41,13 @@ export function hasLogin(value: unknown): value is { login: string } {
 
 export function isInstallation(value: unknown): value is {
   id: number
-  account: { login: string; type: string }
+  account: { login: string }
 } {
   return (
     isRecord(value) &&
     typeof value.id === 'number' &&
     isRecord(value.account) &&
-    typeof value.account.login === 'string' &&
-    typeof value.account.type === 'string'
+    typeof value.account.login === 'string'
   )
 }
 

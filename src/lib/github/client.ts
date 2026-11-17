@@ -1,7 +1,7 @@
 import { USER_CONTRIBUTIONS_QUERY, VIEWER_QUERY } from './queries'
 import type { GitHubContributionsResponse, GitHubUser } from './types'
 import { githubLogger } from '../logger'
-import { isArrayOf, isCommitSummary, isLanguageBytes, isPrivateRepoSummary, type Guard } from './guards'
+import { isArray, isArrayOf, isCommitSummary, isLanguageBytes, isPrivateRepoSummary, type Guard } from './guards'
 import { createYearDateRange, createMonthDateRange } from './date-utils'
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
@@ -95,13 +95,19 @@ export class GitHubClient {
   /**
    * Get list of private repos the user has access to, optionally filtered by activity year
    */
-  async getPrivateRepos(year?: number): Promise<{ full_name: string; private: boolean; pushed_at: string }[]> {
+  async getPrivateRepos(year?: number): Promise<{ full_name: string; private: boolean; pushed_at: string | null }[]> {
     const repos = await this.restGet(
       '/user/repos?visibility=private&per_page=100&affiliation=owner,collaborator&sort=pushed&direction=desc',
-      isArrayOf(isPrivateRepoSummary)
+      isArray
     )
 
-    let filtered = repos.filter(r => r.private)
+    const validRepos = repos.filter(isPrivateRepoSummary)
+    const droppedCount = repos.length - validRepos.length
+    if (droppedCount > 0) {
+      githubLogger.warn(`Dropped ${droppedCount} malformed private repo(s) from GitHub response`)
+    }
+
+    let filtered = validRepos.filter(r => r.private)
 
     // If year specified, only include repos pushed to in that year
     if (year) {
@@ -110,6 +116,9 @@ export class GitHubClient {
       const yearEnd = new Date(to)
 
       filtered = filtered.filter(r => {
+        if (r.pushed_at === null) {
+          return false
+        }
         const pushedAt = new Date(r.pushed_at)
         return pushedAt >= yearStart && pushedAt <= yearEnd
       })

@@ -12,6 +12,7 @@ vi.mock('jose', () => {
 })
 
 import { getInstallationToken, getUserInstallation } from './app'
+import { authLogger } from '../logger'
 
 describe('GitHub App response validation', () => {
   const fetchMock = vi.fn()
@@ -47,8 +48,6 @@ describe('GitHub App response validation', () => {
   it.each([
     ['an object instead of a list', { message: 'Not Found' }],
     ['null', null],
-    ['an installation without an account', [{ id: 1 }]],
-    ['an installation with a non-string account login', [{ id: 1, account: { login: 7, type: 'User' } }]],
   ])('rejects with a handled error when the installations lookup returns %s', async (_label, body) => {
     respondOnce({ login: 'octo' })
     respondOnce(body)
@@ -56,6 +55,30 @@ describe('GitHub App response validation', () => {
     await expect(getUserInstallation('test-access-token')).rejects.toThrow(
       'GitHub returned an unexpected installations response'
     )
+  })
+
+  it.each([
+    ['a null account', { id: 1, account: null }],
+    ['an enterprise account without a login', { id: 2, account: { id: 5, slug: 'acme', name: 'Acme' } }],
+    ['an installation without an account', { id: 3 }],
+    ['a non-string account login', { id: 4, account: { login: 7, type: 'User' } }],
+  ])('drops an installation with %s and still finds the user installation', async (_label, malformed) => {
+    const installation = { id: 9, account: { login: 'octo', type: 'User' } }
+    respondOnce({ login: 'octo' })
+    respondOnce([malformed, installation])
+
+    expect(await getUserInstallation('test-access-token')).toEqual(installation)
+  })
+
+  it('warns with the count of dropped installations', async () => {
+    const warnSpy = vi.spyOn(authLogger, 'warn').mockImplementation(() => {})
+    respondOnce({ login: 'octo' })
+    respondOnce([{ id: 1, account: null }, { id: 9, account: { login: 'octo', type: 'User' } }])
+
+    await getUserInstallation('test-access-token')
+
+    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Dropped 1'))
+    warnSpy.mockRestore()
   })
 
   it('returns the installation for the matching login regardless of case', async () => {
