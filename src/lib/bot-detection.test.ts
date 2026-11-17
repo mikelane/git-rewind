@@ -25,6 +25,15 @@ describe('isBot', () => {
     it('detects codecov', () => {
       expect(isBot('codecov')).toBe(true)
     })
+
+    it.each(['hubot', 'Hubot'])('detects %s as a bot', login => {
+      expect(isBot(login)).toBe(true)
+    })
+
+    // Documents the accepted includes() trade-off (issue #42 decision)
+    it('accepts substring matches such as hubotfan as bots', () => {
+      expect(isBot('hubotfan')).toBe(true)
+    })
   })
 
   describe('is case-insensitive', () => {
@@ -72,5 +81,6 @@ describe('BOT_PATTERNS', () => {
     expect(BOT_PATTERNS).toContain('renovate')
     expect(BOT_PATTERNS).toContain('github-actions')
     expect(BOT_PATTERNS).toContain('codecov')
+    expect(BOT_PATTERNS).toContain('hubot')
   })
 })

@@ -527,6 +527,20 @@ describe('processContributions', () => {
       expect(result.collaboration.topCollaborators.length).toBe(1)
       expect(result.collaboration.topCollaborators[0].username).toBe('realuser')
     })
+
+    it('excludes hubot from top and unique collaborators', () => {
+      const data = createMinimalResponse()
+      data.user.contributionsCollection.pullRequestReviewContributions.nodes = [
+        { occurredAt: '2024-01-01', pullRequest: { title: 'PR 1', author: { login: 'hubot' } } },
+        { occurredAt: '2024-01-02', pullRequest: { title: 'PR 2', author: { login: 'hubot' } } },
+        { occurredAt: '2024-01-03', pullRequest: { title: 'PR 3', author: { login: 'alice' } } },
+      ]
+
+      const result = processContributions(data, 2024)
+
+      expect(result.collaboration.topCollaborators).toEqual([{ username: 'alice', interactions: 1 }])
+      expect(result.collaboration.uniqueCollaborators).toBe(1)
+    })
   })
 
   describe('empty contribution data handling', () => {

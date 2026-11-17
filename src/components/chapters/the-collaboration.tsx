@@ -86,7 +86,9 @@ export function TheCollaborationChapter({
   }
 
   const hasReviews = data.pullRequestsReviewed > 0
-  const hasCollaborators = data.topCollaborators.length > 0
+  const humanCollaborators = data.topCollaborators.filter(c => !isBot(c.username))
+  const [topCollaborator, ...otherCollaborators] = humanCollaborators
+  const hasCollaborators = humanCollaborators.length > 0
   const transition = getCollaborationTransition(activityLevel)
   const reviewStyleDesc = getReviewStyleDescription(data.reviewStyle, activityLevel)
 
@@ -150,7 +152,7 @@ export function TheCollaborationChapter({
           </p>
 
           {/* Top collaborator - highlighted */}
-          {data.topCollaborators[0] && (
+          {topCollaborator && (
             <div
               className={cn(
                 'flex items-center gap-4 p-4 rounded-xl mb-4',
@@ -159,59 +161,49 @@ export function TheCollaborationChapter({
             >
               <div className="w-12 h-12 rounded-full bg-accent/30 flex items-center justify-center">
                 <span className="text-lg text-accent font-medium">
-                  {data.topCollaborators[0].username.charAt(0).toUpperCase()}
+                  {topCollaborator.username.charAt(0).toUpperCase()}
                 </span>
               </div>
               <div>
                 <p className="text-body text-text-primary font-medium">
-                  @{data.topCollaborators[0].username}
+                  @{topCollaborator.username}
                 </p>
                 <p className="text-body-sm text-text-secondary">
-                  Your most frequent collaborator · {data.topCollaborators[0].interactions} {data.topCollaborators[0].interactions === 1 ? 'interaction' : 'interactions'}
+                  Your most frequent collaborator · {topCollaborator.interactions} {topCollaborator.interactions === 1 ? 'interaction' : 'interactions'}
                 </p>
               </div>
             </div>
           )}
 
           {/* Other collaborators */}
-          {data.topCollaborators.length > 1 && (
+          {otherCollaborators.length > 0 && (
             <div className="flex flex-wrap gap-3">
-              {data.topCollaborators.slice(1, 5).map((collaborator, index) => {
-                const isBotAccount = isBot(collaborator.username)
-
-                return (
-                  <div
-                    key={collaborator.username}
-                    className={cn(
-                      'flex items-center gap-3 px-4 py-3 rounded-full',
-                      'bg-bg-surface hover:bg-bg-elevated transition-colors',
-                      'opacity-0 animate-fade-in'
-                    )}
-                    style={{ animationDelay: `${600 + index * 100}ms` }}
-                  >
-                    {/* Avatar placeholder */}
-                    <div className={cn(
-                      'w-8 h-8 rounded-full flex items-center justify-center',
-                      isBotAccount ? 'bg-border-subtle' : 'bg-accent/20'
-                    )}>
-                      <span className={cn(
-                        'text-caption font-medium',
-                        isBotAccount ? 'text-text-tertiary' : 'text-accent'
-                      )}>
-                        {isBotAccount ? '🤖' : collaborator.username.charAt(0).toUpperCase()}
-                      </span>
-                    </div>
-                    <div>
-                      <span className="text-body-sm text-text-primary font-medium">
-                        @{collaborator.username}
-                      </span>
-                      <span className="text-body-sm text-text-tertiary ml-2">
-                        {collaborator.interactions}
-                      </span>
-                    </div>
+              {otherCollaborators.slice(0, 4).map((collaborator, index) => (
+                <div
+                  key={collaborator.username}
+                  className={cn(
+                    'flex items-center gap-3 px-4 py-3 rounded-full',
+                    'bg-bg-surface hover:bg-bg-elevated transition-colors',
+                    'opacity-0 animate-fade-in'
+                  )}
+                  style={{ animationDelay: `${600 + index * 100}ms` }}
+                >
+                  {/* Avatar placeholder */}
+                  <div className="w-8 h-8 rounded-full flex items-center justify-center bg-accent/20">
+                    <span className="text-caption font-medium text-accent">
+                      {collaborator.username.charAt(0).toUpperCase()}
+                    </span>
                   </div>
-                )
-              })}
+                  <div>
+                    <span className="text-body-sm text-text-primary font-medium">
+                      @{collaborator.username}
+                    </span>
+                    <span className="text-body-sm text-text-tertiary ml-2">
+                      {collaborator.interactions}
+                    </span>
+                  </div>
+                </div>
+              ))}
             </div>
           )}
         </div>
