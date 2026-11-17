@@ -3,28 +3,19 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { SignJWT, EncryptJWT, CompactEncrypt, UnsecuredJWT, base64url } from 'jose'
 
 const mockCookieStore = {
-  get: vi.fn(),
-  set: vi.fn(),
-  delete: vi.fn(),
+  get: vi.fn<(name: string) => { value: string } | undefined>(),
+  set: vi.fn<(name: string, value: string, options: Record<string, unknown>) => void>(),
+  delete: vi.fn<(name: string) => void>(),
 }
 
 vi.mock('next/headers', () => ({
   cookies: vi.fn(() => Promise.resolve(mockCookieStore)),
 }))
 
+import { sessionKey } from '@/test/session-key'
 import { getSession, setSession } from './session'
 
 const SECRET = 'a-session-secret-that-is-at-least-32-chars-long'
-
-async function sessionKey(secret: string, bits = 256): Promise<Uint8Array> {
-  const material = await crypto.subtle.importKey('raw', new TextEncoder().encode(secret), 'HKDF', false, ['deriveBits'])
-  const derived = await crypto.subtle.deriveBits(
-    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: new TextEncoder().encode('git-rewind session cookie') },
-    material,
-    bits
-  )
-  return new Uint8Array(derived)
-}
 
 async function encryptPayload(payload: Record<string, unknown>) {
   return new EncryptJWT(payload)
@@ -54,6 +45,7 @@ async function readCookie(value: string) {
 describe('session cookie (adversarial)', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    mockCookieStore.get.mockReset()
     vi.stubEnv('SESSION_SECRET', SECRET)
   })
 

@@ -29,7 +29,7 @@ describe('GitHub App fetch caching', () => {
   })
 
   it('does not cache the installation access token request', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ token: 'ghs_token' }) })
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ token: 'test-installation-token' }) })
 
     await getInstallationToken(42)
 
@@ -42,7 +42,7 @@ describe('GitHub App fetch caching', () => {
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ login: 'octo' }) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) })
 
-    await getUserInstallation('gho_token')
+    await getUserInstallation('test-access-token')
 
     expect(fetchMock.mock.calls[0][0]).toBe('https://api.github.com/user')
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ cache: 'no-store' })

@@ -210,9 +210,12 @@ export function useYearStats(storyRef: RefObject<HTMLElement | null>): UseYearSt
     setRefreshing(true)
     clearCacheForYear('stats', selectedYear)
     syncCachedYears()
-    await fetchStats(selectedYear)
-    if (mountedRef.current) {
-      setRefreshing(false)
+    try {
+      await fetchStats(selectedYear)
+    } finally {
+      if (mountedRef.current) {
+        setRefreshing(false)
+      }
     }
   }, [selectedYear, fetchStats, syncCachedYears])
 

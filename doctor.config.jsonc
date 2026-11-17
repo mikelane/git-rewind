@@ -1,0 +1,56 @@
+{
+  "ignore": {
+    // Every entry below is a finding we reviewed and chose to keep. The reason sits next to the entry.
+    "overrides": [
+      {
+        // False positive: the rule only knows React 19.0-19.2 and flags 19.3.x. Next 15.5.29 is past the
+        // fixed 15.5.18 release, and react 19.3.1 is newer than any listed fix.
+        "files": ["package.json"],
+        "rules": ["react-doctor/no-vulnerable-react-server-components"]
+      },
+      {
+        // Intentional: sign-in starts from a plain link, so /api/auth/login is reached by a GET navigation.
+        // The route sets the short-lived OAuth CSRF state cookie on the same 302 redirect to GitHub, so the
+        // cookie and the redirect must share one response.
+        "files": ["src/app/api/auth/login/route.ts"],
+        "rules": ["react-doctor/nextjs-no-side-effect-in-get-handler"]
+      },
+      {
+        // Intentional: /api/auth/login is a route handler that answers with a 302 to github.com, so it needs
+        // a full browser navigation; next/link would try to render it as a page.
+        "files": ["src/app/demo/demo-experience.tsx", "src/app/page.tsx"],
+        "rules": ["react-doctor/nextjs-no-a-element"]
+      },
+      {
+        // Intentional: ImageResponse (satori) renders this JSX to a PNG. The repeated stat blocks use inline
+        // styles and cannot share client components.
+        "files": ["src/app/opengraph-image.tsx"],
+        "rules": ["react-doctor/duplicate-jsx-subtree"]
+      },
+      {
+        // Intentional: the insights are a short, static, never-reordered list of strings that may repeat, so
+        // the text is not a safe key and the index is stable.
+        "files": ["src/components/chapters/prologue.tsx"],
+        "rules": ["react-doctor/no-array-index-as-key"]
+      },
+      {
+        // False positive: both resets are already in a finally block. They are guarded on purpose (latest
+        // request wins, and no state update after unmount), and the use-year-stats tests cover those races.
+        "files": ["src/hooks/use-year-stats.ts"],
+        "rules": ["react-doctor/no-loading-flag-reset-outside-finally"]
+      },
+      {
+        // Deferred: splitting this chapter would change tested rendering paths and is out of scope for this
+        // hardening issue.
+        "files": ["src/components/chapters/the-rhythm.tsx"],
+        "rules": ["react-doctor/no-high-complexity-react-function"]
+      },
+      {
+        // Deferred: moving to a native <dialog> changes focus, stacking and animation behaviour and the
+        // current look must stay unchanged. The existing div already has role=dialog, aria-modal and Escape.
+        "files": ["src/components/ui/methodology-modal.tsx"],
+        "rules": ["react-doctor/prefer-html-dialog"]
+      }
+    ]
+  }
+}

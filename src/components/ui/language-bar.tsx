@@ -34,7 +34,7 @@ export function LanguageBar({
         {sorted.map((lang, index) => (
           <div
             key={lang.name}
-            className="h-full transition-all duration-500 ease-out-expo first:rounded-l-full last:rounded-r-full"
+            className="h-full transition-[width] duration-500 ease-out-expo first:rounded-l-full last:rounded-r-full"
             style={{
               width: `${lang.percentage}%`,
               backgroundColor: lang.color,

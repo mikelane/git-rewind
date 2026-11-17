@@ -45,6 +45,7 @@ export function MethodologyModal({ isOpen, onClose }: MethodologyModalProps) {
       <div
         data-testid="methodology-backdrop"
         className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+        aria-hidden="true"
         onClick={onClose}
       />
 
@@ -57,7 +58,6 @@ export function MethodologyModal({ isOpen, onClose }: MethodologyModalProps) {
           'overflow-hidden shadow-xl',
           'animate-scale-in'
         )}
-        onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-border-subtle">

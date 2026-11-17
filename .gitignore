@@ -13,6 +13,8 @@ build
 .env.development.local
 .env.test.local
 .env.production.local
+.env.*
+!.env.example
 
 # Debug
 npm-debug.log*
@@ -34,6 +36,10 @@ coverage
 
 # Misc
 *.pem
+*.key
+*.p12
+credentials.json
+service-account.json
 
 # Claude Code local settings
 .claude/settings.local.json

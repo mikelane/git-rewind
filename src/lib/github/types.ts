@@ -4,13 +4,13 @@ export interface GitHubUser {
   login: string
   name: string | null
   avatarUrl: string
-  createdAt: string
 }
 
 export interface ContributionDay {
   date: string
   contributionCount: number
-  contributionLevel: 'NONE' | 'FIRST_QUARTILE' | 'SECOND_QUARTILE' | 'THIRD_QUARTILE' | 'FOURTH_QUARTILE'
+  // Known values are documented here; GitHub may add more without notice, so unknown strings are allowed.
+  contributionLevel: 'NONE' | 'FIRST_QUARTILE' | 'SECOND_QUARTILE' | 'THIRD_QUARTILE' | 'FOURTH_QUARTILE' | (string & {})
 }
 
 export interface ContributionWeek {
@@ -38,10 +38,11 @@ export interface Repository {
     color: string | null
   } | null
   languages: {
-    edges: LanguageEdge[]
+    edges: (LanguageEdge | null)[] | null
     totalSize: number
-  }
-  defaultBranchRef: {
+  } | null
+  // Not selected by USER_CONTRIBUTIONS_QUERY, so never present at runtime.
+  defaultBranchRef?: {
     target: {
       history: {
         totalCount: number
@@ -88,22 +89,22 @@ export interface ContributionsCollection {
   restrictedContributionsCount: number
   contributionCalendar: ContributionCalendar
   commitContributionsByRepository: {
-    repository: Repository
+    repository: Repository | null
     contributions: {
       totalCount: number
     }
   }[]
   pullRequestContributions: {
     totalCount: number
-    nodes: PullRequestContribution[]
+    nodes: (PullRequestContribution | null)[] | null
   }
   pullRequestReviewContributions: {
     totalCount: number
-    nodes: PullRequestReviewContribution[]
+    nodes: (PullRequestReviewContribution | null)[] | null
   }
   issueContributions: {
     totalCount: number
-    nodes: IssueContribution[]
+    nodes: (IssueContribution | null)[] | null
   }
 }
 
