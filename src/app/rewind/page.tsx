@@ -46,6 +46,16 @@ export default function RewindPage() {
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
   const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
+  // Populated only after mount so the first client render matches the server render
+  const [cachedYears, setCachedYears] = useState<Set<number>>(new Set())
+
+  const syncCachedYears = useCallback(() => {
+    setCachedYears(new Set(AVAILABLE_YEARS.filter(year => getCached<YearStats>('stats', year))))
+  }, [])
+
+  useEffect(() => {
+    syncCachedYears()
+  }, [syncCachedYears])
 
   // Ref to track current year for race condition prevention in background fetches
   const currentYearRef = useRef(selectedYear)
@@ -107,11 +117,12 @@ export default function RewindPage() {
 
       const data = await response.json()
       setCache('stats', year, data)
+      syncCachedYears()
       return data
     } catch {
       return null
     }
-  }, [])
+  }, [syncCachedYears])
 
   // Compute comparison for current stats against previous year (if available)
   const computeComparison = useCallback((currentStats: YearStats, year: number) => {
@@ -223,9 +234,10 @@ export default function RewindPage() {
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
     clearCacheForYear('stats', selectedYear)
+    syncCachedYears()
     await fetchStats(selectedYear)
     setRefreshing(false)
-  }, [selectedYear, fetchStats])
+  }, [selectedYear, fetchStats, syncCachedYears])
 
   useEffect(() => {
     fetchStats(selectedYear)
@@ -339,7 +351,7 @@ export default function RewindPage() {
         <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
         {AVAILABLE_YEARS.map((year) => {
           const isLoading = loadingYears.has(year)
-          const isCached = !!getCached<YearStats>('stats', year)
+          const isCached = cachedYears.has(year)
 
           return (
             <button
