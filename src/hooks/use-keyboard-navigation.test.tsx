@@ -15,6 +15,13 @@ function Harness({ currentChapter = 1 }: { currentChapter?: number }) {
       ))}
       <button>action</button>
       <a href="#x">link</a>
+      <button data-testid="icon-button"><span>icon</span></button>
+      <input aria-label="name" />
+      <select aria-label="choice"><option>one</option></select>
+      <textarea aria-label="notes" />
+      <div contentEditable suppressContentEditableWarning data-testid="editable">
+        <span>text</span>
+      </div>
     </div>
   )
 }
@@ -110,5 +117,80 @@ describe('useKeyboardNavigation', () => {
     pressOn(document.body, 'ArrowDown')
 
     expect(scrolledChapters()).toBe(0)
+  })
+
+  it.each([
+    ['ArrowDown', 2],
+    ['PageDown', 2],
+    ['ArrowUp', 0],
+    ['PageUp', 0],
+  ])('It moves from chapter 2 on %s to chapter index %i', (key, expectedIndex) => {
+    renderHarness(2)
+
+    pressOn(document.body, key)
+
+    expect(scrollSpies[expectedIndex]).toHaveBeenCalledTimes(1)
+    expect(scrolledChapters()).toBe(1)
+  })
+
+  it.each([
+    ['input', 'input'],
+    ['select', 'select'],
+    ['textarea', 'textarea'],
+    ['contenteditable', '[data-testid="editable"]'],
+  ])('It yields ArrowDown from a focused %s', (_label, selector) => {
+    const { container } = renderHarness(1)
+    const target = container.querySelector(selector) as Element
+    const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+
+    target.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(scrolledChapters()).toBe(0)
+  })
+
+  it.each([
+    ['a child of a button', '[data-testid="icon-button"] span'],
+    ['a child of a contenteditable element', '[data-testid="editable"] span'],
+  ])('It yields ArrowDown from %s', (_label, selector) => {
+    const { container } = renderHarness(1)
+    const target = container.querySelector(selector) as Element
+    const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
+
+    target.dispatchEvent(event)
+
+    expect(event.defaultPrevented).toBe(false)
+    expect(scrolledChapters()).toBe(0)
+  })
+
+  it('It keeps handling keys while a dialog has aria-modal="false"', () => {
+    const dialog = document.createElement('div')
+    dialog.setAttribute('aria-modal', 'false')
+    document.body.appendChild(dialog)
+    renderHarness(1)
+
+    pressOn(document.body, 'ArrowDown')
+
+    expect(scrollSpies[1]).toHaveBeenCalledTimes(1)
+  })
+
+  describe.each(['metaKey', 'ctrlKey', 'altKey'])('with %s held', modifier => {
+    it.each(['ArrowDown', 'ArrowUp', 'PageDown', 'PageUp', 'Home', 'End'])(
+      'It leaves %s to the browser',
+      key => {
+        renderHarness(2)
+        const event = new KeyboardEvent('keydown', {
+          key,
+          [modifier]: true,
+          bubbles: true,
+          cancelable: true,
+        })
+
+        document.body.dispatchEvent(event)
+
+        expect(event.defaultPrevented).toBe(false)
+        expect(scrolledChapters()).toBe(0)
+      }
+    )
   })
 })

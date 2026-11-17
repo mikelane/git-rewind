@@ -14,6 +14,10 @@ interface UseKeyboardNavigationOptions {
 const INTERACTIVE_SELECTOR = 'button, a, input, select, textarea, [contenteditable]'
 const MODAL_SELECTOR = '[aria-modal="true"]'
 
+function hasCommandModifier(event: KeyboardEvent): boolean {
+  return event.metaKey || event.ctrlKey || event.altKey
+}
+
 function shouldYieldToPage(target: EventTarget | null): boolean {
   const isInsideInteractiveControl =
     target instanceof Element && target.closest(INTERACTIVE_SELECTOR) !== null
@@ -28,7 +32,7 @@ function shouldYieldToPage(target: EventTarget | null): boolean {
  * - End: Last chapter
  *
  * Space and Enter are never handled, so they keep activating focused controls.
- * Keys are ignored when focus is inside an interactive control or while a
+ * Keys combined with Meta, Ctrl or Alt are left to the browser. Keys are ignored when focus is inside an interactive control or while a
  * modal dialog (`aria-modal="true"`) is open.
  * Automatically disabled on touch devices.
  */
@@ -50,7 +54,7 @@ export function useKeyboardNavigation({
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      if (shouldYieldToPage(event.target)) {
+      if (hasCommandModifier(event) || shouldYieldToPage(event.target)) {
         return
       }
 
