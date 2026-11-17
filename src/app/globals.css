@@ -32,6 +32,12 @@
     @apply md:px-12 lg:px-20;
   }
 
+  @supports (height: 100dvh) {
+    .chapter {
+      min-height: 100dvh;
+    }
+  }
+
   /* Narrative text wrapper */
   .narrative {
     @apply max-w-2xl;
@@ -94,8 +100,8 @@
     scroll-behavior: auto !important;
   }
 
-  /* Keep opacity for faded-in elements visible; dot-rail labels stay hidden until hover or focus */
-  .opacity-0:not(.rail-label) {
+  /* Keep opacity for faded-in elements visible; labels revealed on hover or focus stay hidden until then */
+  .opacity-0:not(.reveal-on-interact) {
     opacity: 1 !important;
   }
 

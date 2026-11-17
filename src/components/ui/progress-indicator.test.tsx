@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest'
-import { render, screen } from '@testing-library/react'
+import { render, screen, fireEvent } from '@testing-library/react'
 import { ProgressIndicator } from './progress-indicator'
 
 const renderIndicator = () =>
@@ -46,10 +46,10 @@ describe('ProgressIndicator', () => {
     )
   })
 
-  it('It marks the hover labels with the rail-label class that reduced motion leaves hidden', () => {
+  it('It marks the hover labels with the reveal-on-interact class that reduced motion leaves hidden', () => {
     renderIndicator()
 
-    expect(screen.getByText('Rhythm')).toHaveClass('rail-label', 'opacity-0')
+    expect(screen.getByText('Rhythm')).toHaveClass('reveal-on-interact', 'opacity-0')
   })
 
   it('It reveals the chapter name on hover and on keyboard focus of the step button', () => {
@@ -59,5 +59,73 @@ describe('ProgressIndicator', () => {
       'group-hover:opacity-100',
       'group-has-[:focus-visible]:opacity-100'
     )
+  })
+
+  it.each(['focus-visible:outline', 'focus-visible:outline-2', 'focus-visible:outline-transparent'])(
+    'It gives the step button %s so focus survives forced-colors mode',
+    (utility) => {
+      renderIndicator()
+
+      expect(screen.getByRole('button', { name: 'Go to Intro' })).toHaveClass(utility)
+    }
+  )
+
+  it('It does not suppress the focus outline on the step button', () => {
+    renderIndicator()
+
+    expect(screen.getByRole('button', { name: 'Go to Intro' })).not.toHaveClass('focus:outline-none')
+  })
+
+  describe('dismissing the revealed label with Escape', () => {
+    const REVEAL_CLASSES = ['group-hover:opacity-100', 'group-has-[:focus-visible]:opacity-100']
+
+    it('It hides the label when Escape is pressed on the focused step button', () => {
+      renderIndicator()
+      const button = screen.getByRole('button', { name: 'Go to Rhythm' })
+      button.focus()
+
+      fireEvent.keyDown(button, { key: 'Escape' })
+
+      expect(screen.getByText('Rhythm')).not.toHaveClass(...REVEAL_CLASSES)
+    })
+
+    it('It keeps focus on the step button after Escape', () => {
+      renderIndicator()
+      const button = screen.getByRole('button', { name: 'Go to Rhythm' })
+      button.focus()
+
+      fireEvent.keyDown(button, { key: 'Escape' })
+
+      expect(button).toHaveFocus()
+    })
+
+    it('It only hides the label of the button that received Escape', () => {
+      renderIndicator()
+      const button = screen.getByRole('button', { name: 'Go to Rhythm' })
+
+      fireEvent.keyDown(button, { key: 'Escape' })
+
+      expect(screen.getByText('Craft')).toHaveClass(...REVEAL_CLASSES)
+    })
+
+    it('It shows the label again the next time the button receives focus', () => {
+      renderIndicator()
+      const button = screen.getByRole('button', { name: 'Go to Rhythm' })
+      fireEvent.keyDown(button, { key: 'Escape' })
+
+      fireEvent.blur(button)
+      fireEvent.focus(button)
+
+      expect(screen.getByText('Rhythm')).toHaveClass(...REVEAL_CLASSES)
+    })
+
+    it('It leaves the label revealable when another key is pressed', () => {
+      renderIndicator()
+      const button = screen.getByRole('button', { name: 'Go to Rhythm' })
+
+      fireEvent.keyDown(button, { key: 'Tab' })
+
+      expect(screen.getByText('Rhythm')).toHaveClass(...REVEAL_CLASSES)
+    })
   })
 })

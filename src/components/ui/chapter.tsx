@@ -20,7 +20,7 @@ export function Chapter({
   return (
     <section
       className={cn(
-        'min-h-screen w-full px-6 py-20',
+        'min-h-screen supports-[height:100dvh]:min-h-dvh w-full px-6 py-20',
         'md:px-12 lg:px-20 xl:px-32',
         centered && 'flex flex-col justify-center',
         className

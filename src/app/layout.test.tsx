@@ -40,6 +40,14 @@ describe('globals.css', () => {
   })
 })
 
+describe('globals.css chapter', () => {
+  it('It sizes .chapter to the dynamic viewport where dvh is supported', () => {
+    expect(globalsCss).toMatch(
+      /@supports\s*\(height:\s*100dvh\)\s*\{\s*\.chapter\s*\{\s*min-height:\s*100dvh/
+    )
+  })
+})
+
 describe('RootLayout viewport', () => {
   it('It extends the layout under device cutouts so safe-area insets resolve', () => {
     expect(viewport.viewportFit).toBe('cover')
@@ -47,8 +55,8 @@ describe('RootLayout viewport', () => {
 })
 
 describe('globals.css reduced motion', () => {
-  it('It excludes the dot-rail labels from the global opacity-0 override', () => {
-    expect(globalsCss).toMatch(/\.opacity-0:not\(\.rail-label\)\s*\{\s*opacity:\s*1\s*!important/)
+  it('It excludes hover and focus revealed labels from the global opacity-0 override', () => {
+    expect(globalsCss).toMatch(/\.opacity-0:not\(\.reveal-on-interact\)\s*\{\s*opacity:\s*1\s*!important/)
   })
 
   it('It no longer forces every opacity-0 element visible', () => {

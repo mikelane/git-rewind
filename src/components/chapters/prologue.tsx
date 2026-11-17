@@ -35,7 +35,7 @@ export function PrologueChapter({
 
   if (isLoading || !data) {
     return (
-      <section className="min-h-screen w-full flex flex-col items-center justify-center px-6">
+      <section className="min-h-screen supports-[height:100dvh]:min-h-dvh w-full flex flex-col items-center justify-center px-6">
         <div className="skeleton h-8 w-48 mb-8" />
         <div className="skeleton h-24 w-64 mb-6" />
         <div className="skeleton h-6 w-80" />
@@ -44,7 +44,7 @@ export function PrologueChapter({
   }
 
   return (
-    <section className="min-h-screen w-full flex flex-col items-center justify-center px-6 text-center">
+    <section className="min-h-screen supports-[height:100dvh]:min-h-dvh w-full flex flex-col items-center justify-center px-6 text-center">
       {/* Year badge */}
       <div
         className={cn(
