@@ -97,6 +97,45 @@ describe('RootLayout fonts', () => {
   })
 })
 
+const FONTSOURCE_LATIN_EXT_RANGE =
+  'U+0100-02BA,U+02BD-02C5,U+02C7-02CC,U+02CE-02D7,U+02DD-02FF,U+0304,U+0308,U+0329,U+1D00-1DBF,U+1E00-1E9F,U+1EF2-1EFF,U+2020,U+20A0-20AB,U+20AD-20C0,U+2113,U+2C60-2C7F,U+A720-A7FF'
+
+describe('RootLayout latin-extended fonts', () => {
+  it.each([
+    ['--font-display-ext', ['500', '600', '700']],
+    ['--font-body-ext', ['400', '500', '600']],
+  ])('It loads %s at weights %j', (variable, weights) => {
+    expect(fontSources(variable).map((source) => source.weight)).toEqual(weights)
+  })
+
+  it.each(['--font-display-ext', '--font-body-ext'])('It points every %s source at a font file that exists', (variable) => {
+    const sources = fontSources(variable)
+
+    expect(sources.length).toBeGreaterThan(0)
+    for (const { path } of sources) {
+      expect(existsSync(join(__dirname, path))).toBe(true)
+    }
+  })
+
+  it.each(['--font-display-ext', '--font-body-ext'])('It restricts %s to the Fontsource latin-ext unicode-range', (variable) => {
+    expect(fontOptions(variable)?.declarations).toEqual([
+      { prop: 'unicode-range', value: FONTSOURCE_LATIN_EXT_RANGE },
+    ])
+  })
+
+  it.each(['--font-display-ext', '--font-body-ext'])('It neither preloads nor adds a metric fallback for %s', (variable) => {
+    expect(fontOptions(variable)).toMatchObject({ preload: false, adjustFontFallback: false, display: 'swap' })
+  })
+
+  it('It puts all four font variables on the html element', () => {
+    const markup = renderToStaticMarkup(<RootLayout>content</RootLayout>)
+
+    for (const variable of ['--font-display-ext', '--font-body-ext']) {
+      expect(markup).toContain(`${variable}-hashed`)
+    }
+  })
+})
+
 function isFontFamilyMap(value: unknown): value is Record<string, string[]> {
   return (
     typeof value === 'object' &&
@@ -119,10 +158,10 @@ describe('tailwind fontFamily', () => {
   const fontFamily = readFontFamily()
 
   it.each([
-    ['display', 'var(--font-display)', 'system-ui'],
-    ['body', 'var(--font-body)', 'system-ui'],
-  ])('It points %s at %s with a %s fallback', (key, variable, fallback) => {
-    expect(fontFamily[key]).toEqual(expect.arrayContaining([variable, fallback]))
-    expect(fontFamily[key][0]).toBe(variable)
+    ['display', 'var(--font-display-ext)', 'var(--font-display)', 'system-ui'],
+    ['body', 'var(--font-body-ext)', 'var(--font-body)', 'system-ui'],
+  ])('It stacks %s as the latin-ext face, then the latin face, then %s', (key, extVariable, variable, fallback) => {
+    expect(fontFamily[key]).toEqual(expect.arrayContaining([extVariable, variable, fallback]))
+    expect(fontFamily[key].slice(0, 2)).toEqual([extVariable, variable])
   })
 })

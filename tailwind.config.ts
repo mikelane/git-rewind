@@ -42,8 +42,8 @@ const config: Config = {
         },
       },
       fontFamily: {
-        display: ['var(--font-display)', 'Space Grotesk', 'system-ui', 'sans-serif'],
-        body: ['var(--font-body)', 'Inter', 'system-ui', 'sans-serif'],
+        display: ['var(--font-display-ext)', 'var(--font-display)', 'Space Grotesk', 'system-ui', 'sans-serif'],
+        body: ['var(--font-body-ext)', 'var(--font-body)', 'Inter', 'system-ui', 'sans-serif'],
         mono: ['JetBrains Mono', 'Menlo', 'monospace'],
       },
       fontSize: {
