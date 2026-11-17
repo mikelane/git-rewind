@@ -36,7 +36,7 @@ export interface UseYearStatsResult {
  * Loads, caches and compares the rewind stats for the selected year.
  * `storyRef` is the element that receives focus after a successful retry.
  */
-export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResult {
+export function useYearStats(storyRef: RefObject<HTMLElement | null>): UseYearStatsResult {
   const [stats, setStats] = useState<YearStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<LoadError | null>(null)
