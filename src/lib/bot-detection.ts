@@ -8,6 +8,7 @@ export const BOT_PATTERNS = [
   'renovate',
   'github-actions',
   'codecov',
+  'hubot',
 ]
 
 /**
