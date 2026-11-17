@@ -345,7 +345,7 @@ export default function RewindPage() {
     : null
 
   return (
-    <main id="main-content" ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
+    <main id="main-content" ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-proximity md:snap-mandatory">
       {/* Year selector */}
       <div className="fixed top-2 left-4 z-50 flex items-center gap-2">
         <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
@@ -424,7 +424,7 @@ export default function RewindPage() {
       />
 
       {/* Prologue */}
-      <div ref={prologueRef} className="snap-start snap-always">
+      <div ref={prologueRef} className="snap-start md:snap-always">
         <PrologueChapter
           data={prologueData}
           isLoading={loading}
@@ -434,7 +434,7 @@ export default function RewindPage() {
       </div>
 
       {/* Chapter 1: The Rhythm */}
-      <div ref={rhythmRef} className="snap-start snap-always">
+      <div ref={rhythmRef} className="snap-start md:snap-always">
         <TheRhythmChapter
           data={rhythmData}
           isLoading={loading}
@@ -445,7 +445,7 @@ export default function RewindPage() {
       </div>
 
       {/* Chapter 2: Your Craft */}
-      <div ref={craftRef} className="snap-start snap-always">
+      <div ref={craftRef} className="snap-start md:snap-always">
         <YourCraftChapter
           data={craftData}
           isLoading={loading}
@@ -456,7 +456,7 @@ export default function RewindPage() {
       </div>
 
       {/* Chapter 3: The Collaboration */}
-      <div ref={collaborationRef} className="snap-start snap-always">
+      <div ref={collaborationRef} className="snap-start md:snap-always">
         <TheCollaborationChapter
           data={collaborationData}
           isLoading={loading}
@@ -465,7 +465,7 @@ export default function RewindPage() {
       </div>
 
       {/* Chapter 4: Peak Moments */}
-      <div ref={peakRef} className="snap-start snap-always">
+      <div ref={peakRef} className="snap-start md:snap-always">
         <PeakMomentsChapter
           data={peakMomentsData}
           isLoading={loading}
@@ -476,7 +476,7 @@ export default function RewindPage() {
       </div>
 
       {/* Epilogue */}
-      <div ref={epilogueRef} className="snap-start snap-always">
+      <div ref={epilogueRef} className="snap-start md:snap-always">
         <EpilogueChapter
           data={epilogueData}
           isLoading={loading}
