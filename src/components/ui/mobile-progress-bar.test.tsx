@@ -69,6 +69,21 @@ describe('MobileProgressBar', () => {
     expect(screen.getByRole('progressbar')).toHaveClass('h-1', 'bg-border-subtle', 'z-40')
     expect(getFill()).toHaveClass('bg-accent')
   })
+
+  it('It returns Reading progress as the accessible name of the progressbar', () => {
+    render(<MobileProgressBar currentChapter={1} totalChapters={6} />)
+
+    expect(screen.getByRole('progressbar', { name: 'Reading progress' })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['Chapter 1 of 6', 1],
+    ['Chapter 4 of 6', 4],
+  ])('It returns "%s" as the valuetext when on chapter %i', (valueText, current) => {
+    render(<MobileProgressBar currentChapter={current} totalChapters={6} />)
+
+    expect(screen.getByRole('progressbar')).toHaveAttribute('aria-valuetext', valueText)
+  })
 })
 
 describe('ProgressIndicator mobile bar', () => {
@@ -78,5 +93,19 @@ describe('ProgressIndicator mobile bar', () => {
     const bar = screen.getByRole('progressbar')
     expect(bar).toHaveAttribute('aria-valuenow', '3')
     expect(bar.style.top).toBe('var(--demo-banner-h, 0px)')
+  })
+
+  it('It returns Chapter navigation as the accessible name of the nav', () => {
+    render(<ProgressIndicator totalChapters={6} currentChapter={1} />)
+
+    expect(screen.getByRole('navigation', { name: 'Chapter navigation' })).toBeInTheDocument()
+  })
+
+  it('It returns a progressbar name that differs from the nav name', () => {
+    render(<ProgressIndicator totalChapters={6} currentChapter={1} />)
+
+    const bar = screen.getByRole('progressbar', { name: 'Reading progress' })
+    const nav = screen.getByRole('navigation', { name: 'Chapter navigation' })
+    expect(bar.getAttribute('aria-label')).not.toBe(nav.getAttribute('aria-label'))
   })
 })
