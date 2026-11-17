@@ -1,7 +1,5 @@
 'use client'
 
-import { cn } from '@/lib/utils'
-
 interface MobileProgressBarProps {
   currentChapter: number
   totalChapters: number

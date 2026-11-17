@@ -40,7 +40,9 @@ afterEach(() => {
 function renderHarness(currentChapter = 1) {
   const result = render(<Harness currentChapter={currentChapter} />)
   chapterRefs.forEach((ref, i) => {
-    if (ref.current) ref.current.scrollIntoView = scrollSpies[i]
+    if (ref.current) {
+      ref.current.scrollIntoView = scrollSpies[i]
+    }
   })
   return result
 }
