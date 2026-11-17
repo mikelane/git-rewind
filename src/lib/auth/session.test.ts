@@ -1,6 +1,6 @@
 // @vitest-environment node
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { SignJWT } from 'jose'
+import { SignJWT, jwtVerify } from 'jose'
 
 const mockCookieStore = {
   get: vi.fn(),
@@ -16,12 +16,16 @@ import { getSession, setSession, clearSession } from './session'
 
 const SECRET = 'a-session-secret-that-is-at-least-32-chars-long'
 
+function signingKey(secret: string): Uint8Array {
+  return new TextEncoder().encode(secret).slice(0, 32)
+}
+
 async function signToken(payload: Record<string, unknown>, secret = SECRET, expiresIn = '1h') {
   return new SignJWT(payload)
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime(expiresIn)
-    .sign(new TextEncoder().encode(secret).slice(0, 32))
+    .sign(signingKey(secret))
 }
 
 describe('session cookie', () => {
@@ -59,10 +63,25 @@ describe('session cookie', () => {
       expect(mockCookieStore.set.mock.calls[0][2]).toMatchObject({ secure: true })
     })
 
-    it('does not store the access token in plain text', async () => {
+    it('stores a three-part signed JWS', async () => {
       await setSession('gho_token')
 
-      expect(mockCookieStore.set.mock.calls[0][1]).not.toContain('gho_token')
+      expect(mockCookieStore.set.mock.calls[0][1].split('.')).toHaveLength(3)
+    })
+
+    it('stores a token that verifies with SESSION_SECRET', async () => {
+      await setSession('gho_token')
+
+      const { payload } = await jwtVerify(mockCookieStore.set.mock.calls[0][1], signingKey(SECRET))
+      expect(payload.token).toBe('gho_token')
+    })
+
+    it('stores a token that does not verify with a different secret', async () => {
+      await setSession('gho_token')
+
+      await expect(
+        jwtVerify(mockCookieStore.set.mock.calls[0][1], signingKey('another-secret-that-is-also-32-chars-long!'))
+      ).rejects.toThrow()
     })
 
     it('stores a value getSession can read back', async () => {
