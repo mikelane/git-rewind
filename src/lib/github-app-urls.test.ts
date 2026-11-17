@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { describe, it, expect, afterEach, vi } from 'vitest'
 import { getAppInstallUrl, getAppSelectTargetUrl } from './github-app-urls'
 
@@ -43,4 +45,15 @@ describe('github-app-urls', () => {
       'https://github.com/apps/second/installations/new',
     ])
   })
+
+  it.each(['src/app/page.tsx', 'src/components/chapters/epilogue.tsx'])(
+    'keeps the github.com/apps literal out of %s and imports these helpers instead',
+    (file) => {
+      const source = readFileSync(join(process.cwd(), file), 'utf8')
+      expect([source.includes('github.com/apps/'), source.includes('@/lib/github-app-urls')]).toEqual([
+        false,
+        true,
+      ])
+    }
+  )
 })

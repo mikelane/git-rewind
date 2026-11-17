@@ -182,12 +182,12 @@ export function DemoExperience({ year }: { year: number }) {
 
       {/* Chapter 1: The Rhythm */}
       <div ref={rhythmRef} className="snap-start snap-always">
-        <TheRhythmChapter data={rhythmData} />
+        <TheRhythmChapter data={rhythmData} isDemo />
       </div>
 
       {/* Chapter 2: Your Craft */}
       <div ref={craftRef} className="snap-start snap-always">
-        <YourCraftChapter data={craftData} />
+        <YourCraftChapter data={craftData} isDemo />
       </div>
 
       {/* Chapter 3: The Collaboration */}
@@ -197,12 +197,12 @@ export function DemoExperience({ year }: { year: number }) {
 
       {/* Chapter 4: Peak Moments */}
       <div ref={peakRef} className="snap-start snap-always">
-        <PeakMomentsChapter data={peakMomentsData} />
+        <PeakMomentsChapter data={peakMomentsData} isDemo />
       </div>
 
       {/* Epilogue */}
       <div ref={epilogueRef} className="snap-start snap-always">
-        <EpilogueChapter data={epilogueData} />
+        <EpilogueChapter data={epilogueData} isDemo />
       </div>
     </main>
   )

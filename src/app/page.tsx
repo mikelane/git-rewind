@@ -9,10 +9,8 @@ import {
   SiteFooter,
 } from '@/components/landing-sections'
 import { getMarketingYear } from '@/lib/marketing-year'
+import { getAppInstallUrl } from '@/lib/github-app-urls'
 import { generateHomeSchema, serializeJsonLd } from '@/lib/seo'
-
-// GitHub App slug for installation URL
-const GITHUB_APP_SLUG = process.env.NEXT_PUBLIC_GITHUB_APP_SLUG || 'git-rewind'
 
 // Re-render daily so the marketing year cannot freeze at build time
 export const revalidate = 86400
@@ -100,7 +98,7 @@ export default function LandingPage() {
 
         {/* Secondary CTA for new users */}
         <a
-          href={`https://github.com/apps/${GITHUB_APP_SLUG}/installations/new`}
+          href={getAppInstallUrl()}
           className={cn(
             'inline-flex items-center justify-center gap-3 px-8 py-4 rounded-xl',
             'bg-transparent text-text-tertiary font-medium',

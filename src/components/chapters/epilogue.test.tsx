@@ -3,7 +3,7 @@
  * Includes branding removal tests (Issue #10) and methodology modal tests (Issue #11)
  */
 
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, fireEvent } from '@testing-library/react'
 import { EpilogueChapter, type EpilogueData } from './epilogue'
 
@@ -12,6 +12,10 @@ vi.mock('@/lib/share', () => ({
 }))
 
 describe('EpilogueChapter', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   const createData = (overrides: Partial<EpilogueData> = {}): EpilogueData => ({
     year: 2024,
     username: 'testuser',
@@ -151,6 +155,89 @@ describe('EpilogueChapter', () => {
       })} />)
 
       expect(screen.queryByText(/of your activity/)).not.toBeInTheDocument()
+    })
+
+    it('links "Grant access" to the select-target URL for the configured slug', () => {
+      vi.stubEnv('NEXT_PUBLIC_GITHUB_APP_SLUG', 'my-rewind')
+      render(<EpilogueChapter data={createData({
+        dataCompleteness: { percentageAccessible: 80, restrictedContributions: 100 },
+      })} />)
+
+      expect(screen.getByRole('link', { name: /grant access/i })).toHaveAttribute(
+        'href',
+        'https://github.com/apps/my-rewind/installations/select_target'
+      )
+    })
+  })
+
+  describe('demo mode (Issue #39)', () => {
+    const primaryElements = (container: HTMLElement) =>
+      container.querySelectorAll('.bg-accent.text-text-inverse')
+
+    it.each([
+      ['unset', '', 'git-rewind'],
+      ['"my-rewind"', 'my-rewind', 'my-rewind'],
+    ])(
+      'renders a "Get your own Rewind" install link when the slug is %s',
+      (_label, envValue, slug) => {
+        vi.stubEnv('NEXT_PUBLIC_GITHUB_APP_SLUG', envValue)
+        render(<EpilogueChapter data={createData()} isDemo />)
+
+        expect(screen.getByRole('link', { name: 'Get your own Rewind' })).toHaveAttribute(
+          'href',
+          `https://github.com/apps/${slug}/installations/new`
+        )
+      }
+    )
+
+    it('opens the install link in the same tab', () => {
+      render(<EpilogueChapter data={createData()} isDemo />)
+
+      const link = screen.getByRole('link', { name: 'Get your own Rewind' })
+      expect(link).not.toHaveAttribute('target')
+    })
+
+    it('renders no disabled button', () => {
+      render(<EpilogueChapter data={createData()} isDemo />)
+
+      const disabledButtons = screen
+        .queryAllByRole('button')
+        .filter((button) => button.hasAttribute('disabled'))
+      expect(disabledButtons).toHaveLength(0)
+    })
+
+    it('does not render "Save Your Rewind"', () => {
+      render(<EpilogueChapter data={createData()} isDemo />)
+
+      expect(screen.queryByText('Save Your Rewind')).not.toBeInTheDocument()
+    })
+
+    it('makes the install link the only primary-styled element', () => {
+      const { container } = render(<EpilogueChapter data={createData()} isDemo />)
+
+      const primary = primaryElements(container)
+      expect(primary).toHaveLength(1)
+      expect(primary[0]).toBe(screen.getByRole('link', { name: 'Get your own Rewind' }))
+    })
+  })
+
+  describe('real rewind (not demo)', () => {
+    it('renders an enabled "Save Your Rewind" button', () => {
+      render(<EpilogueChapter data={createData()} onDownload={vi.fn()} />)
+
+      expect(screen.getByRole('button', { name: 'Save Your Rewind' })).toBeEnabled()
+    })
+
+    it('renders the share button', () => {
+      render(<EpilogueChapter data={createData()} onDownload={vi.fn()} />)
+
+      expect(screen.getByRole('button', { name: 'Share a Highlight' })).toBeInTheDocument()
+    })
+
+    it('does not render a "Get your own Rewind" link', () => {
+      render(<EpilogueChapter data={createData()} onDownload={vi.fn()} />)
+
+      expect(screen.queryByRole('link', { name: 'Get your own Rewind' })).not.toBeInTheDocument()
     })
   })
 })

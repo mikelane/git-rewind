@@ -4,6 +4,7 @@ import { useState, useCallback } from 'react'
 import { cn, pluralize } from '@/lib/utils'
 import { getLanguageColor } from '@/lib/constants'
 import { shareHighlight } from '@/lib/share'
+import { getAppInstallUrl, getAppSelectTargetUrl } from '@/lib/github-app-urls'
 import { MethodologyModal } from '@/components/ui/methodology-modal'
 import { type ActivityLevel } from '@/lib/activity-level'
 import {
@@ -29,6 +30,7 @@ interface EpilogueChapterProps {
   data: EpilogueData | null
   isLoading?: boolean
   onDownload?: () => void
+  isDemo?: boolean
   activityLevel?: ActivityLevel
 }
 
@@ -38,6 +40,7 @@ export function EpilogueChapter({
   data,
   isLoading,
   onDownload,
+  isDemo = false,
   activityLevel = 'typical',
 }: EpilogueChapterProps) {
   const [shareState, setShareState] = useState<ShareState>('idle')
@@ -178,7 +181,7 @@ export function EpilogueChapter({
                 </span>{' '}
                 is in repos we can&apos;t access.{' '}
                 <a
-                  href="https://github.com/apps/git-rewind/installations/select_target"
+                  href={getAppSelectTargetUrl()}
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-accent hover:underline underline-offset-2"
@@ -190,36 +193,51 @@ export function EpilogueChapter({
           )}
         </div>
 
-        {/* Action buttons - better intent framing */}
-        <div className="flex gap-3 mt-6 opacity-0 animate-fade-in delay-500">
-          <button
-            onClick={handleShare}
-            disabled={shareState === 'sharing'}
-            className={cn(
-              'flex-1 py-3 px-6 rounded-xl',
-              'bg-accent text-text-inverse font-medium',
-              'hover:bg-accent-hover transition-colors',
-              'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
-              shareState === 'sharing' && 'opacity-70 cursor-wait',
-              (shareState === 'shared' || shareState === 'copied') && 'bg-green-600 hover:bg-green-600'
-            )}
-          >
-            {shareButtonText}
-          </button>
-          <button
-            onClick={onDownload}
-            disabled={!onDownload}
-            className={cn(
-              'py-3 px-6 rounded-xl',
-              'bg-bg-surface text-text-secondary',
-              'hover:bg-bg-elevated hover:text-text-primary transition-colors',
-              'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
-              !onDownload && 'opacity-50 cursor-not-allowed'
-            )}
-          >
-            Save Your Rewind
-          </button>
-        </div>
+        {isDemo ? (
+          <div className="flex mt-6 opacity-0 animate-fade-in delay-500">
+            <a
+              href={getAppInstallUrl()}
+              className={cn(
+                'flex-1 py-3 px-6 rounded-xl text-center',
+                'bg-accent text-text-inverse font-medium',
+                'hover:bg-accent-hover transition-colors',
+                'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base'
+              )}
+            >
+              Get your own Rewind
+            </a>
+          </div>
+        ) : (
+          <div className="flex gap-3 mt-6 opacity-0 animate-fade-in delay-500">
+            <button
+              onClick={handleShare}
+              disabled={shareState === 'sharing'}
+              className={cn(
+                'flex-1 py-3 px-6 rounded-xl',
+                'bg-accent text-text-inverse font-medium',
+                'hover:bg-accent-hover transition-colors',
+                'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
+                shareState === 'sharing' && 'opacity-70 cursor-wait',
+                (shareState === 'shared' || shareState === 'copied') && 'bg-green-600 hover:bg-green-600'
+              )}
+            >
+              {shareButtonText}
+            </button>
+            <button
+              onClick={onDownload}
+              disabled={!onDownload}
+              className={cn(
+                'py-3 px-6 rounded-xl',
+                'bg-bg-surface text-text-secondary',
+                'hover:bg-bg-elevated hover:text-text-primary transition-colors',
+                'focus-visible:ring-2 focus-visible:ring-accent focus-visible:ring-offset-2 focus-visible:ring-offset-bg-base',
+                !onDownload && 'opacity-50 cursor-not-allowed'
+              )}
+            >
+              Save Your Rewind
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Footer message */}

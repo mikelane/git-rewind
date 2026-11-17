@@ -40,6 +40,7 @@ interface TheRhythmChapterProps {
   isLoading?: boolean
   username?: string
   year?: number
+  isDemo?: boolean
   activityLevel?: ActivityLevel
 }
 
@@ -48,16 +49,17 @@ export function TheRhythmChapter({
   isLoading,
   username,
   year,
+  isDemo = false,
   activityLevel = 'typical',
 }: TheRhythmChapterProps) {
-  const streakHighlight: StreakHighlight | null = data && username && year ? {
+  const streakHighlight: StreakHighlight | null = data && !isDemo && username && year ? {
     type: HighlightType.Streak,
     username,
     year,
     longestStreak: data.longestStreak,
   } : null
 
-  const activeDaysHighlight: ActiveDaysHighlight | null = data && username && year ? {
+  const activeDaysHighlight: ActiveDaysHighlight | null = data && !isDemo && username && year ? {
     type: HighlightType.ActiveDays,
     username,
     year,

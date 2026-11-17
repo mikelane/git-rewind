@@ -64,3 +64,28 @@ describe('DemoExperience collaboration chapter', () => {
     expect(callout.textContent).toBe('You worked with 19 different people this year.')
   })
 })
+
+describe('DemoExperience conversion call to action', () => {
+  it('renders a "Get your own Rewind" link to the install URL', () => {
+    vi.stubEnv('NEXT_PUBLIC_GITHUB_APP_SLUG', 'my-rewind')
+    render(<DemoExperience year={2026} />)
+
+    expect(screen.getByRole('link', { name: 'Get your own Rewind' })).toHaveAttribute(
+      'href',
+      'https://github.com/apps/my-rewind/installations/new'
+    )
+    vi.unstubAllEnvs()
+  })
+
+  it('renders no "Save Your Rewind" button', () => {
+    render(<DemoExperience year={2026} />)
+
+    expect(screen.queryByText('Save Your Rewind')).toBeNull()
+  })
+
+  it('renders no chapter or epilogue share button besides the prologue share button', () => {
+    render(<DemoExperience year={2026} />)
+
+    expect(screen.getAllByRole('button', { name: /share/i })).toHaveLength(1)
+  })
+})
