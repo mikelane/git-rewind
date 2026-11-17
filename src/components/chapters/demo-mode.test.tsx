@@ -10,6 +10,7 @@ import { TheRhythmChapter } from './the-rhythm'
 import { YourCraftChapter } from './your-craft'
 import { PeakMomentsChapter } from './peak-moments'
 import { EpilogueChapter } from './epilogue'
+import { PrologueChapter } from './prologue'
 
 vi.mock('@/lib/share', () => ({
   shareHighlight: vi.fn().mockResolvedValue({ success: true, method: 'clipboard' }),
@@ -51,6 +52,12 @@ const epilogueData = {
   longestStreak: 14,
 }
 
+const prologueData = {
+  year: 2024,
+  username: 'octocat',
+  totalContributions: 1000,
+}
+
 const identity = { username: 'octocat', year: 2024 }
 
 const chapters: Array<[string, (isDemo: boolean) => ReactElement]> = [
@@ -67,6 +74,10 @@ const chapters: Array<[string, (isDemo: boolean) => ReactElement]> = [
     (isDemo) => <PeakMomentsChapter data={peakData} {...identity} isDemo={isDemo} />,
   ],
   ['EpilogueChapter', (isDemo) => <EpilogueChapter data={epilogueData} isDemo={isDemo} />],
+  [
+    'PrologueChapter',
+    (isDemo) => <PrologueChapter data={prologueData} isDemo={isDemo} />,
+  ],
 ]
 
 describe('share buttons and demo mode', () => {

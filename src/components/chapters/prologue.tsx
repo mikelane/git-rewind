@@ -16,6 +16,7 @@ interface PrologueChapterProps {
   isLoading?: boolean
   isComparisonLoading?: boolean
   onContinue?: () => void
+  isDemo?: boolean
 }
 
 export function PrologueChapter({
@@ -23,8 +24,9 @@ export function PrologueChapter({
   isLoading,
   isComparisonLoading,
   onContinue,
+  isDemo = false,
 }: PrologueChapterProps) {
-  const contributionsHighlight: ContributionsHighlight | null = data ? {
+  const contributionsHighlight: ContributionsHighlight | null = data && !isDemo ? {
     type: HighlightType.Contributions,
     username: data.username,
     year: data.year,

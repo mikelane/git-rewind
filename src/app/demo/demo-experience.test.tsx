@@ -83,9 +83,9 @@ describe('DemoExperience conversion call to action', () => {
     expect(screen.queryByText('Save Your Rewind')).toBeNull()
   })
 
-  it('renders no chapter or epilogue share button besides the prologue share button', () => {
+  it('renders no share button anywhere in the demo', () => {
     render(<DemoExperience year={2026} />)
 
-    expect(screen.getAllByRole('button', { name: /share/i })).toHaveLength(1)
+    expect(screen.queryAllByRole('button', { name: /share/i })).toHaveLength(0)
   })
 })

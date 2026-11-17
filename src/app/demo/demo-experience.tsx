@@ -177,6 +177,7 @@ export function DemoExperience({ year }: { year: number }) {
         <PrologueChapter
           data={prologueData}
           onContinue={() => scrollToChapter(1)}
+          isDemo
         />
       </div>
 
