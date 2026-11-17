@@ -984,6 +984,16 @@ describe('RewindPage fetch races', () => {
 
       expect(redirected()).toBe(false)
     })
+
+    it('It redirects to sign in when a retry of the selected year returns 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, httpStatus(500))
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+
+      await respond(selectedYear, 1, httpStatus(401))
+
+      expect(redirected()).toBe(true)
+    })
   })
 
   describe('after the page unmounts', () => {
