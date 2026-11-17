@@ -1,11 +1,8 @@
 import { SignJWT, importPKCS8 } from 'jose'
 
-const GITHUB_API_URL = 'https://api.github.com'
+import { hasInstallationToken, hasLogin, isArrayOf, isInstallation } from './guards'
 
-interface InstallationToken {
-  token: string
-  expires_at: string
-}
+const GITHUB_API_URL = 'https://api.github.com'
 
 interface Installation {
   id: number
@@ -66,7 +63,10 @@ export async function getInstallationToken(installationId: number): Promise<stri
     throw new Error(`Failed to get installation token: ${response.status} ${error}`)
   }
 
-  const data: InstallationToken = await response.json()
+  const data: unknown = await response.json()
+  if (!hasInstallationToken(data)) {
+    throw new Error('GitHub returned an unexpected installation token response')
+  }
   return data.token
 }
 
@@ -87,7 +87,10 @@ export async function getUserInstallation(userAccessToken: string): Promise<Inst
     throw new Error('Failed to get user info')
   }
 
-  const user = await userResponse.json()
+  const user: unknown = await userResponse.json()
+  if (!hasLogin(user)) {
+    throw new Error('GitHub returned an unexpected user response')
+  }
   const userLogin = user.login
 
   // Now get installations accessible to the user
@@ -106,7 +109,10 @@ export async function getUserInstallation(userAccessToken: string): Promise<Inst
     throw new Error('Failed to get installations')
   }
 
-  const installations: Installation[] = await installationsResponse.json()
+  const installations: unknown = await installationsResponse.json()
+  if (!isArrayOf(isInstallation)(installations)) {
+    throw new Error('GitHub returned an unexpected installations response')
+  }
 
   // Find installation for this user
   return installations.find(

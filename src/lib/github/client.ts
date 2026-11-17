@@ -1,6 +1,7 @@
 import { USER_CONTRIBUTIONS_QUERY, VIEWER_QUERY } from './queries'
 import type { GitHubContributionsResponse, GitHubUser } from './types'
 import { githubLogger } from '../logger'
+import { isArrayOf, isCommitSummary, isLanguageBytes, isPrivateRepoSummary, type Guard } from './guards'
 import { createYearDateRange, createMonthDateRange } from './date-utils'
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
@@ -53,7 +54,7 @@ export class GitHubClient {
     return json.data
   }
 
-  private async restGet<T>(path: string): Promise<T> {
+  private async restGet<T>(path: string, isExpectedShape: Guard<T>): Promise<T> {
     const response = await fetch(`${GITHUB_REST_URL}${path}`, {
       cache: 'no-store',
       headers: {
@@ -66,7 +67,11 @@ export class GitHubClient {
       throw new Error(`GitHub REST API error: ${response.status} ${response.statusText}`)
     }
 
-    return response.json()
+    const body: unknown = await response.json()
+    if (!isExpectedShape(body)) {
+      throw new Error(`GitHub REST API returned an unexpected response for ${path}`)
+    }
+    return body
   }
 
   async getViewer(): Promise<GitHubUser> {
@@ -91,8 +96,9 @@ export class GitHubClient {
    * Get list of private repos the user has access to, optionally filtered by activity year
    */
   async getPrivateRepos(year?: number): Promise<{ full_name: string; private: boolean; pushed_at: string }[]> {
-    const repos = await this.restGet<{ full_name: string; private: boolean; pushed_at: string }[]>(
-      '/user/repos?visibility=private&per_page=100&affiliation=owner,collaborator&sort=pushed&direction=desc'
+    const repos = await this.restGet(
+      '/user/repos?visibility=private&per_page=100&affiliation=owner,collaborator&sort=pushed&direction=desc',
+      isArrayOf(isPrivateRepoSummary)
     )
 
     let filtered = repos.filter(r => r.private)
@@ -132,8 +138,9 @@ export class GitHubClient {
       const monthlyResults = await Promise.all(
         monthlyRanges.map(async ({ since, until }) => {
           try {
-            const commits = await this.restGet<{ sha: string }[]>(
-              `/repos/${repoFullName}/commits?author=${username}&since=${since}&until=${until}&per_page=100`
+            const commits = await this.restGet(
+              `/repos/${repoFullName}/commits?author=${username}&since=${since}&until=${until}&per_page=100`,
+              isArrayOf(isCommitSummary)
             )
             return commits.length
           } catch (error) {
@@ -156,7 +163,7 @@ export class GitHubClient {
    */
   async getRepoLanguages(repoFullName: string): Promise<Record<string, number>> {
     try {
-      return await this.restGet<Record<string, number>>(`/repos/${repoFullName}/languages`)
+      return await this.restGet(`/repos/${repoFullName}/languages`, isLanguageBytes)
     } catch (error) {
       githubLogger.warn(`Failed to get languages for ${repoFullName}`, error)
       return {}
@@ -197,10 +204,7 @@ export class GitHubClient {
 
       for (const result of results) {
         if (result.commits > 0) {
-          const languageArray = Object.entries(result.languages).map(([name, bytes]) => ({
-            name,
-            bytes: bytes as number,
-          }))
+          const languageArray = Object.entries(result.languages).map(([name, bytes]) => ({ name, bytes }))
 
           repoStats.push({
             repo: result.repo,
