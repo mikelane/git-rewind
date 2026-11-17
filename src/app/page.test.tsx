@@ -21,6 +21,19 @@ describe('LandingPage', () => {
     expect(revalidate).toBeLessThanOrEqual(86400)
   })
 
+  it('It links the secondary call to action to the install URL for the configured slug', () => {
+    vi.stubEnv('NEXT_PUBLIC_GITHUB_APP_SLUG', 'my-rewind')
+    render(<LandingPage />)
+
+    const installLinks = screen
+      .getAllByRole('link')
+      .filter((link) => link.getAttribute('href')?.includes('github.com/apps/'))
+    expect(installLinks.map((link) => link.getAttribute('href'))).toEqual([
+      'https://github.com/apps/my-rewind/installations/new',
+    ])
+    vi.unstubAllEnvs()
+  })
+
   it('It keeps Git Rewind as the single h1', () => {
     render(<LandingPage />)
     expect(screen.getAllByRole('heading', { level: 1 })).toHaveLength(1)

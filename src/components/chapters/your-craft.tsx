@@ -33,6 +33,7 @@ interface YourCraftChapterProps {
   isLoading?: boolean
   username?: string
   year?: number
+  isDemo?: boolean
   activityLevel?: ActivityLevel
 }
 
@@ -41,9 +42,10 @@ export function YourCraftChapter({
   isLoading,
   username,
   year,
+  isDemo = false,
   activityLevel = 'typical',
 }: YourCraftChapterProps) {
-  const languageHighlight: LanguageHighlight | null = data && username && year ? {
+  const languageHighlight: LanguageHighlight | null = data && !isDemo && username && year ? {
     type: HighlightType.Language,
     username,
     year,

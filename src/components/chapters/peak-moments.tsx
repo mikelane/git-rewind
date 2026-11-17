@@ -42,6 +42,7 @@ interface PeakMomentsChapterProps {
   isLoading?: boolean
   username?: string
   year?: number
+  isDemo?: boolean
   activityLevel?: ActivityLevel
 }
 
@@ -94,9 +95,10 @@ export function PeakMomentsChapter({
   isLoading,
   username,
   year,
+  isDemo = false,
   activityLevel = 'typical',
 }: PeakMomentsChapterProps) {
-  const peakDayHighlight: PeakDayHighlight | null = data?.busiestDay && username && year ? {
+  const peakDayHighlight: PeakDayHighlight | null = data?.busiestDay && !isDemo && username && year ? {
     type: HighlightType.PeakDay,
     username,
     year,
