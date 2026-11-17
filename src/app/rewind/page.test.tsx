@@ -22,7 +22,9 @@ vi.mock('@/components/chapters', () => ({
 }))
 
 vi.mock('@/components/ui', () => ({
-  ProgressIndicator: () => <div data-testid="progress">Progress</div>,
+  ProgressIndicator: ({ onChapterClick }: { onChapterClick: (index: number) => void }) => (
+    <button data-testid="progress" onClick={() => onChapterClick(1)}>Progress</button>
+  ),
 }))
 
 vi.mock('@/hooks', () => ({
@@ -143,6 +145,44 @@ describe('RewindPage', () => {
         expect(wrapper).not.toHaveClass('snap-always')
       }
     )
+  })
+
+  describe('progress dot scrolling', () => {
+    const scrollIntoView = vi.fn()
+
+    beforeEach(() => {
+      scrollIntoView.mockClear()
+      Element.prototype.scrollIntoView = scrollIntoView
+    })
+
+    afterEach(() => {
+      vi.unstubAllGlobals()
+      Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+    })
+
+    const clickProgressDot = async () => {
+      render(<RewindPage />)
+      fireEvent.click(await screen.findByTestId('progress'))
+    }
+
+    it.each([
+      [true, 'auto'],
+      [false, 'smooth'],
+    ])('It jumps with behavior for reduced motion %s: %s', async (reduced, behavior) => {
+      vi.stubGlobal('matchMedia', () => ({ matches: reduced }))
+
+      await clickProgressDot()
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior })
+    })
+
+    it('It jumps smoothly when matchMedia is missing', async () => {
+      vi.stubGlobal('matchMedia', undefined)
+
+      await clickProgressDot()
+
+      expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
+    })
   })
 
   describe('year pill cached styling', () => {

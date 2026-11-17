@@ -17,6 +17,7 @@ import {
 import { ProgressIndicator } from '@/components/ui'
 import { getLanguageColor } from '@/lib/constants'
 import { useScrollProgress, useKeyboardNavigation, useDemoBannerHeight } from '@/hooks'
+import { chapterScrollBehavior } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
@@ -140,7 +141,7 @@ export function DemoExperience({ year }: { year: number }) {
   useKeyboardNavigation({ chapterRefs, currentChapter })
 
   const scrollToChapter = (index: number) => {
-    chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
+    chapterRefs[index]?.current?.scrollIntoView({ behavior: chapterScrollBehavior() })
   }
 
   return (

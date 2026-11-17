@@ -1,5 +1,5 @@
-import { describe, it, expect, vi, afterEach } from 'vitest'
-import { render, screen, within } from '@testing-library/react'
+import { describe, it, expect, vi, afterEach, beforeEach } from 'vitest'
+import { render, screen, within, fireEvent } from '@testing-library/react'
 import { DemoExperience } from './demo-experience'
 
 vi.mock('@/hooks', async importOriginal => ({
@@ -141,6 +141,44 @@ describe('DemoExperience mobile scrolling', () => {
     render(<DemoExperience year={2026} />)
 
     expect(screen.getByRole('progressbar').style.top).toBe('var(--demo-banner-h, 0px)')
+  })
+})
+
+describe('DemoExperience progress dot scrolling', () => {
+  const scrollIntoView = vi.fn()
+
+  beforeEach(() => {
+    scrollIntoView.mockClear()
+    Element.prototype.scrollIntoView = scrollIntoView
+  })
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    Reflect.deleteProperty(Element.prototype, 'scrollIntoView')
+  })
+
+  const clickSecondDot = () => {
+    render(<DemoExperience year={2026} />)
+    fireEvent.click(screen.getAllByRole('button', { name: /^Go to/ })[1])
+  }
+
+  it.each([
+    [true, 'auto'],
+    [false, 'smooth'],
+  ])('It jumps with behavior for reduced motion %s: %s', (reduced, behavior) => {
+    vi.stubGlobal('matchMedia', () => ({ matches: reduced }))
+
+    clickSecondDot()
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior })
+  })
+
+  it('It jumps smoothly when matchMedia is missing', () => {
+    vi.stubGlobal('matchMedia', undefined)
+
+    clickSecondDot()
+
+    expect(scrollIntoView).toHaveBeenCalledWith({ behavior: 'smooth' })
   })
 })
 
