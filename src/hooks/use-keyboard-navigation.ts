@@ -11,13 +11,25 @@ interface UseKeyboardNavigationOptions {
   enabled?: boolean
 }
 
+const INTERACTIVE_SELECTOR = 'button, a, input, select, textarea, [contenteditable]'
+const MODAL_SELECTOR = '[aria-modal="true"]'
+
+function shouldYieldToPage(target: EventTarget | null): boolean {
+  const isInsideInteractiveControl =
+    target instanceof Element && target.closest(INTERACTIVE_SELECTOR) !== null
+  return isInsideInteractiveControl || document.querySelector(MODAL_SELECTOR) !== null
+}
+
 /**
  * Hook to enable keyboard navigation between chapters.
- * - ArrowDown / Space / PageDown: Next chapter
+ * - ArrowDown / PageDown: Next chapter
  * - ArrowUp / PageUp: Previous chapter
  * - Home: First chapter
  * - End: Last chapter
  *
+ * Space and Enter are never handled, so they keep activating focused controls.
+ * Keys are ignored when focus is inside an interactive control or while a
+ * modal dialog (`aria-modal="true"`) is open.
  * Automatically disabled on touch devices.
  */
 export function useKeyboardNavigation({
@@ -38,12 +50,7 @@ export function useKeyboardNavigation({
     }
 
     const handleKeyDown = (event: KeyboardEvent) => {
-      // Don't intercept if user is typing in an input
-      if (
-        event.target instanceof HTMLInputElement ||
-        event.target instanceof HTMLTextAreaElement ||
-        (event.target as HTMLElement).isContentEditable
-      ) {
+      if (shouldYieldToPage(event.target)) {
         return
       }
 
@@ -52,13 +59,6 @@ export function useKeyboardNavigation({
         case 'PageDown':
           event.preventDefault()
           scrollToChapter(currentChapter) // currentChapter is 1-indexed, so this goes to next
-          break
-        case ' ': // Space
-          // Only if not holding shift (shift+space = scroll up in browsers)
-          if (!event.shiftKey) {
-            event.preventDefault()
-            scrollToChapter(currentChapter)
-          }
           break
         case 'ArrowUp':
         case 'PageUp':
