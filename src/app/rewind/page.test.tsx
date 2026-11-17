@@ -850,7 +850,6 @@ describe('RewindPage fetch races', () => {
       pending.resolve(response)
     })
   }
-  const respondToLatest = (y: number, response: unknown) => respond(y, (staged.get(y)?.length ?? 0) - 1, response)
   const lastRequestIndex = (y: number) => Math.max((staged.get(y)?.length ?? 0) - 1, 0)
   const switchTo = (y: number) => fireEvent.click(screen.getByRole('button', { name: new RegExp(`View ${y}`) }))
   const shownYear = () => screen.getByTestId('prologue').getAttribute('data-year')
