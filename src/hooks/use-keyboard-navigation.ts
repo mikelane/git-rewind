@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useCallback, RefObject } from 'react'
+import { chapterScrollBehavior } from '@/lib/motion'
 
 interface UseKeyboardNavigationOptions {
   /** Refs to the chapter sections */
@@ -43,7 +44,7 @@ export function useKeyboardNavigation({
 }: UseKeyboardNavigationOptions): void {
   const scrollToChapter = useCallback((index: number) => {
     const clampedIndex = Math.max(0, Math.min(index, chapterRefs.length - 1))
-    chapterRefs[clampedIndex]?.current?.scrollIntoView({ behavior: 'smooth' })
+    chapterRefs[clampedIndex]?.current?.scrollIntoView({ behavior: chapterScrollBehavior() })
   }, [chapterRefs])
 
   useEffect(() => {
