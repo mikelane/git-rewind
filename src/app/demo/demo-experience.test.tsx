@@ -1,11 +1,11 @@
-import { describe, it, expect, vi } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { render, screen, within } from '@testing-library/react'
 import { DemoExperience } from './demo-experience'
 
-vi.mock('@/hooks', () => ({
+vi.mock('@/hooks', async importOriginal => ({
+  ...(await importOriginal<typeof import('@/hooks')>()),
   useScrollProgress: () => ({ currentChapter: 0, scrollProgress: 0 }),
   useKeyboardNavigation: () => undefined,
-  useDemoBannerHeight: () => undefined,
 }))
 
 function getMostCollaboratedSection(): HTMLElement {
@@ -131,5 +131,43 @@ describe('DemoExperience mobile scrolling', () => {
     render(<DemoExperience year={2026} />)
 
     expect(screen.getByRole('progressbar').style.top).toBe('var(--demo-banner-h, 0px)')
+  })
+})
+
+describe('DemoExperience banner offset wiring', () => {
+  const BANNER_PROPERTY = '--demo-banner-h'
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+    vi.restoreAllMocks()
+    document.documentElement.style.removeProperty(BANNER_PROPERTY)
+  })
+
+  it('It observes the demo banner element for height changes', () => {
+    const observed: Element[] = []
+    vi.stubGlobal(
+      'ResizeObserver',
+      class {
+        observe(element: Element) {
+          observed.push(element)
+        }
+        unobserve() {}
+        disconnect() {}
+      }
+    )
+
+    render(<DemoExperience year={2026} />)
+
+    const banner = screen.getByText(/This is a demo with sample data/).parentElement
+    expect(observed).toEqual([banner])
+  })
+
+  it('It publishes the measured banner height as --demo-banner-h', () => {
+    vi.stubGlobal('ResizeObserver', undefined)
+    vi.spyOn(HTMLElement.prototype, 'offsetHeight', 'get').mockReturnValue(37)
+
+    render(<DemoExperience year={2026} />)
+
+    expect(document.documentElement.style.getPropertyValue(BANNER_PROPERTY)).toBe('37px')
   })
 })
