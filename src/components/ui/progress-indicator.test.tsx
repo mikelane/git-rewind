@@ -25,4 +25,16 @@ describe('ProgressIndicator', () => {
 
     expect(dot).toHaveClass('w-2', 'h-2', 'rounded-full')
   })
+
+  it('offsets the chapter counter so its right edge stays 24px from the viewport', () => {
+    renderIndicator()
+
+    expect(screen.getByText('1 / 3').parentElement).toHaveClass('pr-[18px]')
+  })
+
+  it('places the hover label 12px from the dot', () => {
+    renderIndicator()
+
+    expect(screen.getByText('Rhythm')).toHaveClass('right-[38px]')
+  })
 })
