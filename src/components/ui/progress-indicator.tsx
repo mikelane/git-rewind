@@ -69,7 +69,9 @@ export function ProgressIndicator({
               <button
                 onClick={() => onChapterClick?.(i)}
                 onKeyDown={(event) => {
-                  if (event.key === 'Escape') setDismissedLabelIndex(i)
+                  if (event.key === 'Escape') {
+                    setDismissedLabelIndex(i)
+                  }
                 }}
                 onFocus={() => setDismissedLabelIndex(null)}
                 onBlur={() => setDismissedLabelIndex(null)}
