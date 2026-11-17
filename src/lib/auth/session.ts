@@ -1,9 +1,11 @@
 import { cookies } from 'next/headers'
-import { SignJWT, jwtVerify } from 'jose'
+import { EncryptJWT, jwtDecrypt } from 'jose'
 
 const TOKEN_COOKIE = 'git-rewind-token'
 
-function getEncryptionKey(): Uint8Array {
+const KEY_DERIVATION_INFO = 'git-rewind session cookie'
+
+async function getEncryptionKey(): Promise<Uint8Array> {
   const secret = process.env.SESSION_SECRET
   if (!secret) {
     throw new Error('SESSION_SECRET environment variable is required')
@@ -11,28 +13,35 @@ function getEncryptionKey(): Uint8Array {
   if (secret.length < 32) {
     throw new Error('SESSION_SECRET must be at least 32 characters for secure encryption')
   }
-  // jose requires a key of at least 256 bits (32 bytes) for HS256
+  // WHY HKDF: A256GCM needs exactly 256 key bits; HKDF-SHA256 derives them from a secret of any
+  // length (instead of truncating it) and the info label keeps the key specific to this cookie.
   const encoder = new TextEncoder()
-  const keyBytes = encoder.encode(secret)
-  return keyBytes.slice(0, 32)
+  const material = await crypto.subtle.importKey('raw', encoder.encode(secret), 'HKDF', false, ['deriveBits'])
+  const bits = await crypto.subtle.deriveBits(
+    { name: 'HKDF', hash: 'SHA-256', salt: new Uint8Array(), info: encoder.encode(KEY_DERIVATION_INFO) },
+    material,
+    256
+  )
+  return new Uint8Array(bits)
 }
 
 async function encryptToken(accessToken: string): Promise<string> {
-  const key = getEncryptionKey()
+  const key = await getEncryptionKey()
 
-  const jwt = await new SignJWT({ token: accessToken })
-    .setProtectedHeader({ alg: 'HS256' })
+  return new EncryptJWT({ token: accessToken })
+    .setProtectedHeader({ alg: 'dir', enc: 'A256GCM' })
     .setIssuedAt()
     .setExpirationTime('24h')
-    .sign(key)
-
-  return jwt
+    .encrypt(key)
 }
 
 async function decryptToken(encryptedToken: string): Promise<string | null> {
   try {
-    const key = getEncryptionKey()
-    const { payload } = await jwtVerify(encryptedToken, key)
+    const key = await getEncryptionKey()
+    const { payload } = await jwtDecrypt(encryptedToken, key, {
+      keyManagementAlgorithms: ['dir'],
+      contentEncryptionAlgorithms: ['A256GCM'],
+    })
     return (payload.token as string) || null
   } catch {
     return null
