@@ -1,16 +1,23 @@
 import { USER_CONTRIBUTIONS_QUERY, VIEWER_QUERY } from './queries'
 import type { GitHubContributionsResponse, GitHubUser } from './types'
 import { githubLogger } from '../logger'
-import { isArray, isArrayOf, isCommitSummary, isLanguageBytes, isPrivateRepoSummary, type Guard } from './guards'
+import {
+  hasErrorMessage,
+  hasGraphQLErrors,
+  isArray,
+  isArrayOf,
+  isCommitSummary,
+  isContributionsData,
+  isGraphQLDataEnvelope,
+  isLanguageBytes,
+  isPrivateRepoSummary,
+  isViewerData,
+  type Guard,
+} from './guards'
 import { createYearDateRange, createMonthDateRange } from './date-utils'
 
 const GITHUB_GRAPHQL_URL = 'https://api.github.com/graphql'
 const GITHUB_REST_URL = 'https://api.github.com'
-
-interface GraphQLResponse<T> {
-  data: T
-  errors?: { message: string }[]
-}
 
 export interface RepoCommitStats {
   repo: string
@@ -30,7 +37,11 @@ export class GitHubClient {
     this.accessToken = accessToken
   }
 
-  private async query<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
+  private async query<T>(
+    query: string,
+    variables: Record<string, unknown> | undefined,
+    isExpectedData: Guard<T>
+  ): Promise<T> {
     const response = await fetch(GITHUB_GRAPHQL_URL, {
       method: 'POST',
       cache: 'no-store',
@@ -45,13 +56,19 @@ export class GitHubClient {
       throw new Error(`GitHub API error: ${response.status} ${response.statusText}`)
     }
 
-    const json: GraphQLResponse<T> = await response.json()
+    const body: unknown = await response.json()
 
-    if (json.errors?.length) {
-      throw new Error(`GraphQL error: ${json.errors[0].message}`)
+    if (hasGraphQLErrors(body)) {
+      const [firstError] = body.errors
+      const message = hasErrorMessage(firstError) ? firstError.message : 'unknown error'
+      throw new Error(`GraphQL error: ${message}`)
     }
 
-    return json.data
+    if (!isGraphQLDataEnvelope(body) || !isExpectedData(body.data)) {
+      throw new Error('GitHub GraphQL API returned an unexpected response')
+    }
+
+    return body.data
   }
 
   private async restGet<T>(path: string, isExpectedShape: Guard<T>): Promise<T> {
@@ -75,7 +92,7 @@ export class GitHubClient {
   }
 
   async getViewer(): Promise<GitHubUser> {
-    const data = await this.query<{ viewer: GitHubUser }>(VIEWER_QUERY)
+    const data = await this.query<{ viewer: GitHubUser }>(VIEWER_QUERY, undefined, isViewerData)
     return data.viewer
   }
 
@@ -85,11 +102,11 @@ export class GitHubClient {
   ): Promise<GitHubContributionsResponse> {
     const { from, to } = createYearDateRange(year)
 
-    return this.query<GitHubContributionsResponse>(USER_CONTRIBUTIONS_QUERY, {
-      username,
-      from,
-      to,
-    })
+    return this.query<GitHubContributionsResponse>(
+      USER_CONTRIBUTIONS_QUERY,
+      { username, from, to },
+      isContributionsData
+    )
   }
 
   /**

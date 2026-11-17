@@ -1,3 +1,5 @@
+import type { GitHubContributionsResponse, GitHubUser } from './types'
+
 export type Guard<T> = (value: unknown) => value is T
 
 export interface PrivateRepoSummary {
@@ -49,6 +51,28 @@ export function isInstallation(value: unknown): value is {
     isRecord(value.account) &&
     typeof value.account.login === 'string'
   )
+}
+
+export function hasGraphQLErrors(value: unknown): value is { errors: unknown[] } {
+  return isRecord(value) && Array.isArray(value.errors) && value.errors.length > 0
+}
+
+export function isGraphQLDataEnvelope(value: unknown): value is { data: Record<string, unknown> } {
+  return isRecord(value) && isRecord(value.data)
+}
+
+export function hasErrorMessage(value: unknown): value is { message: string } {
+  return isRecord(value) && typeof value.message === 'string'
+}
+
+// Validates only what the app reads (viewer.login). Other GitHubUser fields are not checked at runtime.
+export function isViewerData(value: unknown): value is { viewer: GitHubUser } {
+  return isRecord(value) && hasLogin(value.viewer)
+}
+
+// Validates only the user login. The contributions tree is not checked at runtime.
+export function isContributionsData(value: unknown): value is GitHubContributionsResponse {
+  return isRecord(value) && hasLogin(value.user)
 }
 
 export function hasInstallationToken(value: unknown): value is { token: string } {
