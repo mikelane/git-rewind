@@ -11,8 +11,8 @@ const unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
 
 // Mock the components to simplify testing
 vi.mock('@/components/chapters', () => ({
-  PrologueChapter: ({ data }: { data: { year: number } | null }) => (
-    <div data-testid="prologue" data-year={data?.year}>Prologue</div>
+  PrologueChapter: ({ data, isComparisonLoading }: { data: { year: number } | null; isComparisonLoading: boolean }) => (
+    <div data-testid="prologue" data-year={data?.year} data-comparison-loading={String(isComparisonLoading)}>Prologue</div>
   ),
   TheRhythmChapter: () => <div data-testid="rhythm">Rhythm</div>,
   YourCraftChapter: () => <div data-testid="craft">Craft</div>,
@@ -1034,6 +1034,70 @@ describe('RewindPage fetch races', () => {
       await respond(selectedYear, 1, httpStatus(401))
 
       expect(redirected()).toBe(false)
+    })
+  })
+
+  describe('the comparison loading state', () => {
+    const beforeOldestYear = oldestYear - 1
+    const comparisonLoading = () => screen.getByTestId('prologue').getAttribute('data-comparison-loading')
+    const cacheOnly = (cachedYear: number) =>
+      vi.mocked(getCached).mockImplementation(((_: string, y: number) => (y === cachedYear ? okBody(y) : null)) as typeof getCached)
+
+    it('It does not show the comparison loading state on the oldest year', async () => {
+      render(<RewindPage />)
+      switchTo(oldestYear)
+
+      await respond(oldestYear, 0, okFor(oldestYear))
+
+      expect(comparisonLoading()).toBe('false')
+    })
+
+    it('It does not request the year before the oldest year', async () => {
+      render(<RewindPage />)
+      switchTo(oldestYear)
+
+      await respond(oldestYear, 0, okFor(oldestYear))
+
+      expect(staged.get(beforeOldestYear)).toBeUndefined()
+    })
+
+    it('It shows the comparison loading state until the previous year arrives', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, okFor(selectedYear))
+      const loadingWhileWaiting = comparisonLoading()
+
+      await respond(olderYear, 0, okFor(olderYear))
+
+      expect([loadingWhileWaiting, comparisonLoading()]).toEqual(['true', 'false'])
+    })
+
+    it('It shows the comparison without a loading state when the previous year is cached', async () => {
+      cacheOnly(olderYear)
+      render(<RewindPage />)
+
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      expect(comparisonLoading()).toBe('false')
+    })
+
+    it('It compares the oldest year with a previous year cached in an earlier session', async () => {
+      cacheOnly(beforeOldestYear)
+      render(<RewindPage />)
+      switchTo(oldestYear)
+
+      await respond(oldestYear, 0, okFor(oldestYear))
+
+      expect(compareYears).toHaveBeenCalledWith(expect.objectContaining({ year: oldestYear }), expect.objectContaining({ year: beforeOldestYear }))
+    })
+
+    it('It does not request the year before the oldest year when that year is cached', async () => {
+      cacheOnly(beforeOldestYear)
+      render(<RewindPage />)
+      switchTo(oldestYear)
+
+      await respond(oldestYear, 0, okFor(oldestYear))
+
+      expect(staged.get(beforeOldestYear)).toBeUndefined()
     })
   })
 

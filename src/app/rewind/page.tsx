@@ -222,8 +222,8 @@ export default function RewindPage() {
     if (cachedPrevious) {
       // Previous year cached - compute comparison immediately
       computeComparison(currentStats, year)
-    } else {
-      // Previous year not cached - show loading state while we fetch it
+    } else if (AVAILABLE_YEARS.includes(previousYear)) {
+      // Previous year not cached but fetchable - show loading state while the prefetch loads it
       setComparisonLoading(true)
     }
 
