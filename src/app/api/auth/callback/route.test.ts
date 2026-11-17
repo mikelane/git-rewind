@@ -245,6 +245,7 @@ describe('GET /api/auth/callback', () => {
         ok: false,
         status: 401,
         text: () => Promise.resolve('Bad credentials'),
+        json: () => Promise.resolve({ access_token: 'would-succeed-without-the-ok-check' }),
       })
 
       const response = await GET(createRequest({ code: 'c', state: 's' }))
@@ -281,6 +282,15 @@ describe('GET /api/auth/callback', () => {
 
       expect(locationOf(response)).toBe(`${APP_URL}/?error=auth_failed`)
       expect(setSession).not.toHaveBeenCalled()
+    })
+
+    it('characterization: a failing setSession redirects to ?error=auth_failed and sets no installation-id cookie', async () => {
+      vi.mocked(setSession).mockRejectedValueOnce(new Error('SESSION_SECRET environment variable is required'))
+
+      const response = await GET(createRequest({ code: 'c', state: 's', installation_id: '12345' }))
+
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=auth_failed`)
+      expect(mockCookieStore.set).not.toHaveBeenCalled()
     })
 
     it('characterization: an ok response with neither access_token nor error stores an undefined token and redirects to /rewind', async () => {
