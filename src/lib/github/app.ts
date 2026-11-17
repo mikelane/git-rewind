@@ -1,16 +1,9 @@
 import { SignJWT, importPKCS8 } from 'jose'
 
 import { authLogger } from '../logger'
-import { hasInstallationToken, hasLogin, isInstallation } from './guards'
+import { hasInstallationToken, hasLogin, isInstallation, type Installation } from './guards'
 
 const GITHUB_API_URL = 'https://api.github.com'
-
-interface Installation {
-  id: number
-  account: {
-    login: string
-  }
-}
 
 /**
  * Generate a JWT for GitHub App authentication

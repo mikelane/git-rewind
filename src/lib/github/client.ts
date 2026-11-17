@@ -13,6 +13,7 @@ import {
   isPrivateRepoSummary,
   isViewerData,
   type Guard,
+  type PrivateRepoSummary,
 } from './guards'
 import { createYearDateRange, createMonthDateRange } from './date-utils'
 
@@ -92,7 +93,7 @@ export class GitHubClient {
   }
 
   async getViewer(): Promise<GitHubUser> {
-    const data = await this.query<{ viewer: GitHubUser }>(VIEWER_QUERY, undefined, isViewerData)
+    const data = await this.query(VIEWER_QUERY, undefined, isViewerData)
     return data.viewer
   }
 
@@ -102,7 +103,7 @@ export class GitHubClient {
   ): Promise<GitHubContributionsResponse> {
     const { from, to } = createYearDateRange(year)
 
-    return this.query<GitHubContributionsResponse>(
+    return this.query(
       USER_CONTRIBUTIONS_QUERY,
       { username, from, to },
       isContributionsData
@@ -112,7 +113,7 @@ export class GitHubClient {
   /**
    * Get list of private repos the user has access to, optionally filtered by activity year
    */
-  async getPrivateRepos(year?: number): Promise<{ full_name: string; private: boolean; pushed_at: string | null }[]> {
+  async getPrivateRepos(year?: number): Promise<PrivateRepoSummary[]> {
     const repos = await this.restGet(
       '/user/repos?visibility=private&per_page=100&affiliation=owner,collaborator&sort=pushed&direction=desc',
       isArray
