@@ -40,6 +40,14 @@ describe('globals.css', () => {
   })
 })
 
+describe('globals.css chapter', () => {
+  it('It sizes .chapter to the dynamic viewport where dvh is supported', () => {
+    expect(globalsCss).toMatch(
+      /@supports\s*\(height:\s*100dvh\)\s*\{\s*\.chapter\s*\{\s*min-height:\s*100dvh/
+    )
+  })
+})
+
 describe('RootLayout viewport', () => {
   it('It extends the layout under device cutouts so safe-area insets resolve', () => {
     expect(viewport.viewportFit).toBe('cover')

@@ -32,6 +32,12 @@
     @apply md:px-12 lg:px-20;
   }
 
+  @supports (height: 100dvh) {
+    .chapter {
+      min-height: 100dvh;
+    }
+  }
+
   /* Narrative text wrapper */
   .narrative {
     @apply max-w-2xl;

@@ -24,7 +24,7 @@ export default function LandingPage() {
         type="application/ld+json"
         dangerouslySetInnerHTML={{ __html: serializeJsonLd(generateHomeSchema()) }}
       />
-      <section className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+      <section className="min-h-screen supports-[height:100dvh]:min-h-dvh flex flex-col items-center justify-center px-6 text-center">
       {/* Logo / Title - THE visual anchor - renders immediately for fast LCP */}
       <h1
         className={cn(

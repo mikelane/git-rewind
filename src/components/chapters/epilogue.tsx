@@ -62,7 +62,7 @@ export function EpilogueChapter({
 
   if (isLoading || !data) {
     return (
-      <section className="min-h-screen w-full flex flex-col items-center justify-center px-6">
+      <section className="min-h-screen supports-[height:100dvh]:min-h-dvh w-full flex flex-col items-center justify-center px-6">
         <div data-testid="epilogue-skeleton" className="skeleton h-80 w-80 rounded-2xl" />
       </section>
     )
@@ -80,7 +80,7 @@ export function EpilogueChapter({
   }[shareState]
 
   return (
-    <section className="min-h-screen w-full flex flex-col items-center justify-center px-6 py-20">
+    <section className="min-h-screen supports-[height:100dvh]:min-h-dvh w-full flex flex-col items-center justify-center px-6 py-20">
       {/* Closing message - more breathing room, larger text */}
       <p
         className={cn(

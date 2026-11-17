@@ -241,3 +241,33 @@ describe('EpilogueChapter', () => {
     })
   })
 })
+
+describe('EpilogueChapter viewport', () => {
+  const data: EpilogueData = {
+    year: 2024,
+    username: 'testuser',
+    totalContributions: 1000,
+    activeDays: 200,
+    topLanguage: 'TypeScript',
+    pullRequestsMerged: 50,
+    longestStreak: 14,
+  }
+
+  it('It sizes the loaded section to the dynamic viewport with a min-h-screen fallback', () => {
+    const { container } = render(<EpilogueChapter data={data} />)
+
+    expect(container.querySelector('section')).toHaveClass(
+      'min-h-screen',
+      'supports-[height:100dvh]:min-h-dvh'
+    )
+  })
+
+  it('It sizes the loading section to the dynamic viewport with a min-h-screen fallback', () => {
+    const { container } = render(<EpilogueChapter data={null} isLoading />)
+
+    expect(container.querySelector('section')).toHaveClass(
+      'min-h-screen',
+      'supports-[height:100dvh]:min-h-dvh'
+    )
+  })
+})

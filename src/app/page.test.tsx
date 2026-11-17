@@ -17,6 +17,15 @@ describe('LandingPage', () => {
     vi.useRealTimers()
   })
 
+  it('It sizes the hero section to the dynamic viewport with a min-h-screen fallback', () => {
+    const { container } = render(<LandingPage />)
+
+    expect(container.querySelector('section')).toHaveClass(
+      'min-h-screen',
+      'supports-[height:100dvh]:min-h-dvh'
+    )
+  })
+
   it('It revalidates at least daily so the marketing year cannot freeze at build time', () => {
     expect(revalidate).toBeLessThanOrEqual(86400)
   })
