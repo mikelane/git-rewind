@@ -841,10 +841,17 @@ describe('RewindPage fetch races', () => {
   const okFor = (y: number) => ({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
   const httpStatus = (status: number) => ({ ok: false, status, json: () => Promise.resolve({}) })
   const respond = async (y: number, nth: number, response: unknown) => {
+    const pending = staged.get(y)?.[nth]
+    // Fail loudly: resolving a request that was never made would let a test pass vacuously
+    if (!pending) {
+      throw new Error(`No staged fetch #${nth} for year ${y}`)
+    }
     await act(async () => {
-      staged.get(y)?.[nth].resolve(response)
+      pending.resolve(response)
     })
   }
+  const respondToLatest = (y: number, response: unknown) => respond(y, (staged.get(y)?.length ?? 0) - 1, response)
+  const lastRequestIndex = (y: number) => Math.max((staged.get(y)?.length ?? 0) - 1, 0)
   const switchTo = (y: number) => fireEvent.click(screen.getByRole('button', { name: new RegExp(`View ${y}`) }))
   const shownYear = () => screen.getByTestId('prologue').getAttribute('data-year')
   const redirected = () => window.location.href === '/api/auth/login'
@@ -931,6 +938,7 @@ describe('RewindPage fetch races', () => {
       expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     })
   })
+
   describe('a 401 response', () => {
     it('It redirects to sign in when the selected year returns 401', async () => {
       render(<RewindPage />)
@@ -977,6 +985,7 @@ describe('RewindPage fetch races', () => {
       expect(redirected()).toBe(false)
     })
   })
+
   describe('after the page unmounts', () => {
     it('It starts no background prefetch when the initial fetch resolves', async () => {
       const { unmount } = render(<RewindPage />)
@@ -1023,7 +1032,7 @@ describe('RewindPage fetch races', () => {
     it('It still shows the story from the fetch that follows the remount', async () => {
       render(<StrictMode><RewindPage /></StrictMode>)
 
-      await respond(selectedYear, staged.get(selectedYear)!.length - 1, okFor(selectedYear))
+      await respond(selectedYear, lastRequestIndex(selectedYear), okFor(selectedYear))
 
       expect(shownYear()).toBe(String(selectedYear))
     })
@@ -1031,17 +1040,17 @@ describe('RewindPage fetch races', () => {
     it('It still redirects when the selected year returns 401', async () => {
       render(<StrictMode><RewindPage /></StrictMode>)
 
-      await respond(selectedYear, staged.get(selectedYear)!.length - 1, httpStatus(401))
+      await respond(selectedYear, lastRequestIndex(selectedYear), httpStatus(401))
 
       expect(redirected()).toBe(true)
     })
 
     it('It still retries after the selected year fails', async () => {
       render(<StrictMode><RewindPage /></StrictMode>)
-      await respond(selectedYear, staged.get(selectedYear)!.length - 1, httpStatus(500))
+      await respond(selectedYear, lastRequestIndex(selectedYear), httpStatus(500))
 
       fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
-      await respond(selectedYear, staged.get(selectedYear)!.length - 1, okFor(selectedYear))
+      await respond(selectedYear, lastRequestIndex(selectedYear), okFor(selectedYear))
 
       expect(shownYear()).toBe(String(selectedYear))
     })
