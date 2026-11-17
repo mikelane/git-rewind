@@ -18,10 +18,11 @@ export function MobileProgressBar({
   return (
     <div
       role="progressbar"
-      aria-label="Chapter progress"
+      aria-label="Reading progress"
       aria-valuemin={1}
       aria-valuemax={totalChapters}
       aria-valuenow={currentChapter}
+      aria-valuetext={`Chapter ${currentChapter} of ${totalChapters}`}
       className="fixed left-0 right-0 z-40 h-1 bg-border-subtle md:hidden"
       style={{ top: offsetTopVar ? `var(${offsetTopVar}, 0px)` : '0px' }}
     >

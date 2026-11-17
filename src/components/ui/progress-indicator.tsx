@@ -36,7 +36,7 @@ export function ProgressIndicator({
           'hidden md:flex', // Hide on mobile
           className
         )}
-        aria-label="Chapter progress"
+        aria-label="Chapter navigation"
       >
         {Array.from({ length: totalChapters }, (_, i) => {
           const chapterNum = i + 1
