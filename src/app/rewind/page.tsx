@@ -136,7 +136,11 @@ export default function RewindPage() {
     // Check cache first
     const cached = getCached<YearStats>('stats', year)
     if (cached) {
-      return { ok: true, stats: cached }
+      if (isYearStats(cached)) {
+        return { ok: true, stats: cached }
+      }
+      // A poisoned cache entry must not be shown; evict it and fetch from the network
+      clearCacheForYear('stats', year)
     }
 
     let response: Response

@@ -542,12 +542,23 @@ describe('RewindPage retry flow regressions', () => {
     await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent("Still couldn't load your GitHub data. Try again in a moment."))
   })
 
+  // A valid stats body with exactly one field removed, so each row isolates one required field
+  const withoutField = (field: keyof ReturnType<typeof okBody>) => {
+    const body: Partial<ReturnType<typeof okBody>> = { ...okBody(year) }
+    delete body[field]
+    return body
+  }
+
   it.each([
     ['null', null],
     ['a string', 'oops'],
     ['a number', 42],
     ['an array', []],
     ['an error payload without stats fields', { error: 'Internal error' }],
+    ['a body with no year', withoutField('year')],
+    ['a body with a non-number year', { ...okBody(year), year: String(year) }],
+    ['a body with no user', withoutField('user')],
+    ['a body with no rhythm', withoutField('rhythm')],
   ])('It shows the error view and caches nothing when a 200 body is %s', async (_name, body) => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(body) })
     render(<RewindPage />)
@@ -725,6 +736,19 @@ describe('RewindPage retry flow regressions', () => {
     expect(screen.getByRole('status').textContent).toBe("Still couldn't load your GitHub data (attempt 3). Try again in a moment.")
   })
 
+  it('It announces attempt 4 when a fourth consecutive retry fails', async () => {
+    global.fetch = vi.fn().mockResolvedValue(failing500())
+    render(<RewindPage />)
+    await screen.findByRole('button', { name: 'Try again' })
+    await retryUntilSettled(2)
+    await retryUntilSettled(3)
+    await retryUntilSettled(4)
+
+    await retryUntilSettled(5)
+
+    expect(screen.getByRole('status').textContent).toBe("Still couldn't load your GitHub data (attempt 4). Try again in a moment.")
+  })
+
   it('It recovers on retry after a processing error caused by a corrupt cached previous year', async () => {
     const store = new Map<number, unknown>()
     store.set(year - 1, { corrupt: true })
@@ -769,5 +793,25 @@ describe('RewindPage retry flow regressions', () => {
     await screen.findByRole('button', { name: 'Try again' })
 
     expect(clearCacheForYear).toHaveBeenCalledWith('stats', clearedYear)
+  })
+
+  it('It shows the error view instead of crashing when the cached selected-year entry is not YearStats', async () => {
+    vi.mocked(getCached).mockImplementation(fakeGetCached(y => (y === year ? [] : null)))
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({}) })
+
+    render(<RewindPage />)
+
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+
+  it('It clears a corrupt cached entry and shows the network result instead', async () => {
+    vi.mocked(getCached).mockImplementation(fakeGetCached(y => (y === year ? { corrupt: true } : null)))
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+
+    render(<RewindPage />)
+
+    expect(await screen.findByTestId('prologue')).toBeInTheDocument()
+    expect(clearCacheForYear).toHaveBeenCalledWith('stats', year)
+    expect(callsFor(year)).toHaveLength(1)
   })
 })
