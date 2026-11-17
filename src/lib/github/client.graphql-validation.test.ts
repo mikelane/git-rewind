@@ -167,7 +167,7 @@ describe('GitHubClient GraphQL response validation', () => {
       ['a null contribution day', FIRST_DAY, null],
       ['a non-string day date', [...FIRST_DAY, 'date'], 20240101],
       ['a non-numeric day count', [...FIRST_DAY, 'contributionCount'], '5'],
-      ['an unknown contribution level', [...FIRST_DAY, 'contributionLevel'], 'LOTS'],
+      ['a non-string contribution level', [...FIRST_DAY, 'contributionLevel'], 5],
       ['null commit contributions by repository', [...COLLECTION, 'commitContributionsByRepository'], null],
       ['a null repository entry', FIRST_REPO_ENTRY, null],
       ['null repository contributions', [...FIRST_REPO_ENTRY, 'contributions'], null],

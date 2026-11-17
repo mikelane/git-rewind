@@ -9,7 +9,8 @@ export interface GitHubUser {
 export interface ContributionDay {
   date: string
   contributionCount: number
-  contributionLevel: 'NONE' | 'FIRST_QUARTILE' | 'SECOND_QUARTILE' | 'THIRD_QUARTILE' | 'FOURTH_QUARTILE'
+  // Known values are documented here; GitHub may add more without notice, so unknown strings are allowed.
+  contributionLevel: 'NONE' | 'FIRST_QUARTILE' | 'SECOND_QUARTILE' | 'THIRD_QUARTILE' | 'FOURTH_QUARTILE' | (string & {})
 }
 
 export interface ContributionWeek {

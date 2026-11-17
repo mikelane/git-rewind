@@ -22,14 +22,6 @@ export interface Installation {
   account: { login: string }
 }
 
-const CONTRIBUTION_LEVELS: readonly string[] = [
-  'NONE',
-  'FIRST_QUARTILE',
-  'SECOND_QUARTILE',
-  'THIRD_QUARTILE',
-  'FOURTH_QUARTILE',
-]
-
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
@@ -104,8 +96,7 @@ function isShape<T extends object>(shape: { [K in keyof T]-?: Guard<T[K]> }): Gu
 const isContributionDay: Guard<ContributionDay> = isShape<ContributionDay>({
   date: isString,
   contributionCount: isCount,
-  contributionLevel: (value): value is ContributionDay['contributionLevel'] =>
-    isString(value) && CONTRIBUTION_LEVELS.includes(value),
+  contributionLevel: isString,
 })
 
 const isNamedLanguage = isShape<{ name: string; color: string | null }>({
