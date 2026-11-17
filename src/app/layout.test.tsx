@@ -9,7 +9,11 @@ const fontLoaderCalls = vi.hoisted(() => [] as Array<{ name: string; options: Re
 vi.mock('next/font/google', () => {
   const loader = (name: string) => (options: Record<string, unknown>) => {
     fontLoaderCalls.push({ name, options })
-    return { variable: `${options.variable as string}-hashed` }
+    const { variable } = options
+    if (typeof variable !== 'string') {
+      throw new Error(`${name} was loaded without a string variable option`)
+    }
+    return { variable: `${variable}-hashed` }
   }
   return { Space_Grotesk: loader('Space_Grotesk'), Inter: loader('Inter') }
 })
@@ -56,8 +60,26 @@ describe('RootLayout fonts', () => {
   })
 })
 
+function isFontFamilyMap(value: unknown): value is Record<string, string[]> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    Object.values(value).every(
+      (stack) => Array.isArray(stack) && stack.every((entry) => typeof entry === 'string')
+    )
+  )
+}
+
+function readFontFamily(): Record<string, string[]> {
+  const fontFamily: unknown = tailwindConfig.theme?.extend?.fontFamily
+  if (!isFontFamilyMap(fontFamily)) {
+    throw new Error('tailwind.config theme.extend.fontFamily is not a map of string stacks')
+  }
+  return fontFamily
+}
+
 describe('tailwind fontFamily', () => {
-  const fontFamily = tailwindConfig.theme?.extend?.fontFamily as Record<string, string[]>
+  const fontFamily = readFontFamily()
 
   it.each([
     ['display', 'var(--font-display)', 'system-ui'],
