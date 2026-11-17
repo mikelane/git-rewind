@@ -3,7 +3,22 @@ import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { createRootMetadata } from '@/lib/seo'
 import { getMarketingYear } from '@/lib/marketing-year'
+import { Inter, Space_Grotesk } from 'next/font/google'
 import './globals.css'
+
+const displayFont = Space_Grotesk({
+  subsets: ['latin'],
+  weight: ['500', '600', '700'],
+  display: 'swap',
+  variable: '--font-display',
+})
+
+const bodyFont = Inter({
+  subsets: ['latin'],
+  weight: ['400', '500', '600'],
+  display: 'swap',
+  variable: '--font-body',
+})
 
 // Computed per render: the title and description carry the marketing year
 export function generateMetadata(): Metadata {
@@ -28,7 +43,7 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="en" dir="ltr">
+    <html lang="en" dir="ltr" className={`${displayFont.variable} ${bodyFont.variable}`}>
       <head>
         {/* Preconnect to critical third-party origins */}
         <link rel="preconnect" href="https://github.com" />
