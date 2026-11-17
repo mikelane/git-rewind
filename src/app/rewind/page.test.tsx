@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { StrictMode } from 'react'
 import { render, waitFor, screen, fireEvent, act } from '@testing-library/react'
 
 // Track unhandled rejections
@@ -10,7 +11,9 @@ const unhandledRejectionHandler = (event: PromiseRejectionEvent) => {
 
 // Mock the components to simplify testing
 vi.mock('@/components/chapters', () => ({
-  PrologueChapter: () => <div data-testid="prologue">Prologue</div>,
+  PrologueChapter: ({ data }: { data: { year: number } | null }) => (
+    <div data-testid="prologue" data-year={data?.year}>Prologue</div>
+  ),
   TheRhythmChapter: () => <div data-testid="rhythm">Rhythm</div>,
   YourCraftChapter: () => <div data-testid="craft">Craft</div>,
   TheCollaborationChapter: () => <div data-testid="collaboration">Collaboration</div>,
@@ -813,5 +816,252 @@ describe('RewindPage retry flow regressions', () => {
     expect(await screen.findByTestId('prologue')).toBeInTheDocument()
     expect(clearCacheForYear).toHaveBeenCalledWith('stats', year)
     expect(callsFor(year)).toHaveLength(1)
+  })
+})
+
+describe('RewindPage fetch races', () => {
+  const originalFetch = global.fetch
+  const originalLocation = window.location
+  const selectedYear = year
+  const olderYear = year - 1
+  const oldestYear = year - 2
+
+  type StagedFetch = { resolve: (response: unknown) => void }
+  let staged: Map<number, StagedFetch[]>
+
+  const stageFetches = () => {
+    staged = new Map()
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const requestedYear = Number(new URL(url, 'http://x').searchParams.get('year'))
+      return new Promise(resolve => {
+        staged.set(requestedYear, [...(staged.get(requestedYear) ?? []), { resolve }])
+      })
+    })
+  }
+  const okFor = (y: number) => ({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
+  const httpStatus = (status: number) => ({ ok: false, status, json: () => Promise.resolve({}) })
+  const respond = async (y: number, nth: number, response: unknown) => {
+    const pending = staged.get(y)?.[nth]
+    // Fail loudly: resolving a request that was never made would let a test pass vacuously
+    if (!pending) {
+      throw new Error(`No staged fetch #${nth} for year ${y}`)
+    }
+    await act(async () => {
+      pending.resolve(response)
+    })
+  }
+  const lastRequestIndex = (y: number) => Math.max((staged.get(y)?.length ?? 0) - 1, 0)
+  const switchTo = (y: number) => fireEvent.click(screen.getByRole('button', { name: new RegExp(`View ${y}`) }))
+  const shownYear = () => screen.getByTestId('prologue').getAttribute('data-year')
+  const redirected = () => window.location.href === '/api/auth/login'
+
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getCached).mockImplementation(() => null)
+    vi.mocked(setCache).mockImplementation(() => {})
+    Object.defineProperty(window, 'location', { value: { href: '/rewind' }, writable: true, configurable: true })
+    stageFetches()
+  })
+  afterEach(() => {
+    global.fetch = originalFetch
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true, configurable: true })
+  })
+
+  describe('a stale selected-year request', () => {
+    const staleOutcomes: Array<[string, (y: number) => unknown]> = [
+      ['fails', () => httpStatus(500)],
+      ['succeeds', okFor],
+    ]
+
+    it.each(staleOutcomes)('It keeps the newer year on screen when the earlier year %s late', async (_outcome, response) => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+      await respond(olderYear, 0, okFor(olderYear))
+
+      await respond(selectedYear, 0, response(selectedYear))
+
+      expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
+      expect(shownYear()).toBe(String(olderYear))
+    })
+
+    it.each(staleOutcomes)('It keeps only the last of three rapid switches when the earlier years %s late', async (_outcome, response) => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+      switchTo(oldestYear)
+      await respond(oldestYear, 0, okFor(oldestYear))
+
+      await respond(selectedYear, 0, response(selectedYear))
+      await respond(olderYear, 0, response(olderYear))
+
+      expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
+      expect(shownYear()).toBe(String(oldestYear))
+    })
+
+    it('It keeps the loading state until the newest year resolves', async () => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      expect(screen.getByRole('button', { name: new RegExp(`View ${olderYear}`) })).toBeDisabled()
+    })
+  })
+
+  describe('the selected year failing while an earlier year is still in flight', () => {
+    it('It shows the error view', async () => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+
+      await respond(olderYear, 0, httpStatus(500))
+
+      expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    })
+
+    it('It fetches the selected year when Try again is clicked', async () => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+      await respond(olderYear, 0, httpStatus(500))
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+
+      expect(staged.get(olderYear)).toHaveLength(2)
+    })
+
+    it('It keeps the error view when the earlier year then succeeds', async () => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+      await respond(olderYear, 0, httpStatus(500))
+
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    })
+  })
+
+  describe('a 401 response', () => {
+    it('It redirects to sign in when the selected year returns 401', async () => {
+      render(<RewindPage />)
+
+      await respond(selectedYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(true)
+    })
+
+    it('It does not redirect when a background prefetch of another year returns 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      await respond(olderYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+
+    it('It does not cache a year whose background prefetch returned 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      await respond(olderYear, 0, httpStatus(401))
+
+      expect(vi.mocked(setCache).mock.calls.map(call => call[1])).toEqual([selectedYear])
+    })
+
+    it('It keeps the story on screen when a background prefetch returns 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      await respond(olderYear, 0, httpStatus(401))
+
+      expect(shownYear()).toBe(String(selectedYear))
+    })
+
+    it('It does not redirect when an earlier year returns 401 after the user switched away', async () => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+      await respond(olderYear, 0, okFor(olderYear))
+
+      await respond(selectedYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+
+    it('It redirects to sign in when a retry of the selected year returns 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, httpStatus(500))
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+
+      await respond(selectedYear, 1, httpStatus(401))
+
+      expect(redirected()).toBe(true)
+    })
+  })
+
+  describe('after the page unmounts', () => {
+    it('It starts no background prefetch when the initial fetch resolves', async () => {
+      const { unmount } = render(<RewindPage />)
+      unmount()
+
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(1)
+    })
+
+    it('It does not redirect when the initial fetch returns 401', async () => {
+      const { unmount } = render(<RewindPage />)
+      unmount()
+
+      await respond(selectedYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+
+    it('It starts no background prefetch when an in-flight retry succeeds', async () => {
+      const { unmount } = render(<RewindPage />)
+      await respond(selectedYear, 0, httpStatus(500))
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+      unmount()
+
+      await respond(selectedYear, 1, okFor(selectedYear))
+
+      expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(2)
+    })
+
+    it('It does not redirect when an in-flight retry returns 401', async () => {
+      const { unmount } = render(<RewindPage />)
+      await respond(selectedYear, 0, httpStatus(500))
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+      unmount()
+
+      await respond(selectedYear, 1, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+  })
+
+  describe('under StrictMode double effects', () => {
+    it('It still shows the story from the fetch that follows the remount', async () => {
+      render(<StrictMode><RewindPage /></StrictMode>)
+
+      await respond(selectedYear, lastRequestIndex(selectedYear), okFor(selectedYear))
+
+      expect(shownYear()).toBe(String(selectedYear))
+    })
+
+    it('It still redirects when the selected year returns 401', async () => {
+      render(<StrictMode><RewindPage /></StrictMode>)
+
+      await respond(selectedYear, lastRequestIndex(selectedYear), httpStatus(401))
+
+      expect(redirected()).toBe(true)
+    })
+
+    it('It still retries after the selected year fails', async () => {
+      render(<StrictMode><RewindPage /></StrictMode>)
+      await respond(selectedYear, lastRequestIndex(selectedYear), httpStatus(500))
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+      await respond(selectedYear, lastRequestIndex(selectedYear), okFor(selectedYear))
+
+      expect(shownYear()).toBe(String(selectedYear))
+    })
   })
 })
