@@ -1,6 +1,6 @@
 'use client'
 
-import { useRef } from 'react'
+import { useMemo, useRef } from 'react'
 import {
   PrologueChapter,
   TheRhythmChapter,
@@ -125,14 +125,12 @@ export function DemoExperience({ year }: { year: number }) {
   const peakRef = useRef<HTMLDivElement>(null)
   const epilogueRef = useRef<HTMLDivElement>(null)
 
-  const chapterRefs = [
-    prologueRef,
-    rhythmRef,
-    craftRef,
-    collaborationRef,
-    peakRef,
-    epilogueRef,
-  ]
+  // Stable array identity: the keyboard hook's effect depends on it, so a fresh
+  // array each render would re-subscribe the keydown listener every render.
+  const chapterRefs = useMemo(
+    () => [prologueRef, rhythmRef, craftRef, collaborationRef, peakRef, epilogueRef],
+    []
+  )
 
   const { currentChapter } = useScrollProgress({ chapterRefs, containerRef: mainRef })
 
