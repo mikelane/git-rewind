@@ -40,7 +40,7 @@ export function ProgressIndicator({
             {chapterName && (
               <span
                 className={cn(
-                  'absolute right-7 px-2 py-1 rounded text-caption whitespace-nowrap',
+                  'absolute right-[38px] px-2 py-1 rounded text-caption whitespace-nowrap',
                   'bg-bg-elevated text-text-secondary',
                   'opacity-0 group-hover:opacity-100 transition-opacity duration-200',
                   'pointer-events-none'
@@ -71,7 +71,7 @@ export function ProgressIndicator({
       })}
 
       {/* Current chapter indicator */}
-      <div className="mt-2 text-right">
+      <div className="mt-2 pr-[18px] text-right">
         <span className="text-caption text-text-tertiary">
           {currentChapter} / {totalChapters}
         </span>
