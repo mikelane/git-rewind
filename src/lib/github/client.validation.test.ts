@@ -2,6 +2,8 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
 import { GitHubClient } from './client'
 import { githubLogger } from '../logger'
 
+const MONTHS_PER_YEAR = 12
+
 describe('GitHubClient REST response validation', () => {
   const fetchMock = vi.fn()
 
@@ -16,6 +18,7 @@ describe('GitHubClient REST response validation', () => {
 
   afterEach(() => {
     vi.unstubAllGlobals()
+    vi.restoreAllMocks()
   })
 
   describe('getPrivateRepos', () => {
@@ -60,8 +63,16 @@ describe('GitHubClient REST response validation', () => {
 
       await new GitHubClient('test-access-token').getPrivateRepos(2024)
 
-      expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Dropped 1'))
-      warnSpy.mockRestore()
+      expect(warnSpy).toHaveBeenCalledWith('Dropped 1 malformed private repo(s) from GitHub response')
+    })
+
+    it('does not warn when every repo is well-formed', async () => {
+      const warnSpy = vi.spyOn(githubLogger, 'warn').mockImplementation(() => {})
+      respondWith([{ full_name: 'o/active', private: true, pushed_at: '2024-06-01T00:00:00Z' }])
+
+      await new GitHubClient('test-access-token').getPrivateRepos(2024)
+
+      expect(warnSpy).not.toHaveBeenCalled()
     })
 
     it('returns private repos from a well-formed response', async () => {
@@ -78,7 +89,10 @@ describe('GitHubClient REST response validation', () => {
 
   describe('getRepoLanguages', () => {
     it.each([
-      ['a list', ['TypeScript']],
+      ['a list of strings', ['TypeScript']],
+      ['a list of numbers', [1, 2]],
+      ['a NaN byte count', { TypeScript: NaN }],
+      ['an infinite byte count', { TypeScript: Infinity }],
       ['null', null],
       ['a non-numeric byte count', { TypeScript: '10' }],
       ['a null byte count', { TypeScript: null }],
@@ -99,6 +113,8 @@ describe('GitHubClient REST response validation', () => {
     it.each([
       ['an object instead of a list', { message: 'Server Error' }],
       ['null', null],
+      ['a commit with a numeric sha', [{ sha: 5 }]],
+      ['a null commit', [null]],
     ])('counts zero commits for %s', async (_label, body) => {
       respondWith(body)
 
@@ -106,9 +122,13 @@ describe('GitHubClient REST response validation', () => {
     })
 
     it('counts commits across the monthly requests for a well-formed response', async () => {
-      respondWith([{ sha: 'a' }, { sha: 'b' }])
+      const commitsPerMonth = [{ sha: 'a' }, { sha: 'b' }]
+      respondWith(commitsPerMonth)
 
-      expect(await new GitHubClient('test-access-token').getRepoCommitCount('o/r', 'octo', 2024)).toBe(24)
+      const count = await new GitHubClient('test-access-token').getRepoCommitCount('o/r', 'octo', 2024)
+
+      expect(fetchMock).toHaveBeenCalledTimes(MONTHS_PER_YEAR)
+      expect(count).toBe(commitsPerMonth.length * MONTHS_PER_YEAR)
     })
   })
 })

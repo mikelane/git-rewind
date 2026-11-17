@@ -31,6 +31,7 @@ describe('GitHub App response validation', () => {
   afterEach(() => {
     vi.unstubAllGlobals()
     vi.unstubAllEnvs()
+    vi.restoreAllMocks()
   })
 
   it.each([
@@ -62,6 +63,8 @@ describe('GitHub App response validation', () => {
     ['an enterprise account without a login', { id: 2, account: { id: 5, slug: 'acme', name: 'Acme' } }],
     ['an installation without an account', { id: 3 }],
     ['a non-string account login', { id: 4, account: { login: 7, type: 'User' } }],
+    ['a string id', { id: '5', account: { login: 'octo', type: 'User' } }],
+    ['an array account', { id: 6, account: ['octo'] }],
   ])('drops an installation with %s and still finds the user installation', async (_label, malformed) => {
     const installation = { id: 9, account: { login: 'octo', type: 'User' } }
     respondOnce({ login: 'octo' })
@@ -77,8 +80,17 @@ describe('GitHub App response validation', () => {
 
     await getUserInstallation('test-access-token')
 
-    expect(warnSpy).toHaveBeenCalledWith(expect.stringContaining('Dropped 1'))
-    warnSpy.mockRestore()
+    expect(warnSpy).toHaveBeenCalledWith('Dropped 1 malformed installation(s) from GitHub response')
+  })
+
+  it('does not warn when every installation is well-formed', async () => {
+    const warnSpy = vi.spyOn(authLogger, 'warn').mockImplementation(() => {})
+    respondOnce({ login: 'octo' })
+    respondOnce([{ id: 9, account: { login: 'octo', type: 'User' } }])
+
+    await getUserInstallation('test-access-token')
+
+    expect(warnSpy).not.toHaveBeenCalled()
   })
 
   it('returns the installation for the matching login regardless of case', async () => {
@@ -106,6 +118,7 @@ describe('GitHub App response validation', () => {
     ['an empty object', {}],
     ['null', null],
     ['a non-string token', { token: 5 }],
+    ['an empty token', { token: '' }],
   ])('rejects with a handled error when the installation token response is %s', async (_label, body) => {
     respondOnce(body)
 
