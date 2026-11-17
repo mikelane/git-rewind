@@ -77,13 +77,38 @@ describe('TheRhythmChapter', () => {
 
   describe('monthly chart labels (issue #56)', () => {
     const renderChart = () => render(<TheRhythmChapter data={createData()} />)
-    const chart = () => screen.getByRole('group', { name: /Monthly activity/ })
+    const chart = () => screen.getByRole('img', { name: /Monthly contributions/ })
     const nonBusiestLabel = () => screen.getAllByText('50').find((el) => el.hasAttribute('aria-hidden'))
 
     it('It puts every month value in the chart accessible name', () => {
       renderChart()
 
-      expect(chart()).toHaveAccessibleName('Monthly activity: January 50, February 75, March 150')
+      expect(chart()).toHaveAccessibleName('Monthly contributions: January 50, February 75, March 150')
+    })
+
+    it('It formats label numbers like the visible labels', () => {
+      render(<TheRhythmChapter data={createData({ contributionsByMonth: [{ month: 'January', count: 1234 }] })} />)
+
+      expect(chart()).toHaveAccessibleName('Monthly contributions: January 1,234')
+    })
+
+    it('It makes the chart an image so child text is not read after the label', () => {
+      renderChart()
+
+      expect(chart().getAttribute('role')).toBe('img')
+    })
+
+    it('It shows a single focus indicator by not adding its own outline colour', () => {
+      renderChart()
+
+      expect(chart()).not.toHaveClass('focus-visible:outline-accent')
+    })
+
+    it('It renders no focusable chart when there are no months', () => {
+      render(<TheRhythmChapter data={createData({ contributionsByMonth: [] })} />)
+
+      expect(screen.queryByRole('img', { hidden: true })).not.toBeInTheDocument()
+      expect(document.querySelector('[tabindex="0"]')).toBeNull()
     })
 
     it('It makes the chart a single tab stop reachable by keyboard', () => {

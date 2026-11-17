@@ -89,9 +89,13 @@ export function TheRhythmChapter({
   const consistencyPercentage = Math.round((data.activeDays / data.totalDays) * 100)
   const activeContext = getRhythmActiveContext(activityLevel, consistencyPercentage)
   const transition = getRhythmTransition(activityLevel)
-  const monthlyActivityLabel = `Monthly activity: ${data.contributionsByMonth
-    .map((m) => `${m.month} ${m.count}`)
+  const hasMonths = data.contributionsByMonth.length > 0
+  const monthlyContributionsLabel = `Monthly contributions: ${data.contributionsByMonth
+    .map((m) => `${m.month} ${m.count.toLocaleString()}`)
     .join(', ')}`
+  const chartAccessibilityProps = hasMonths
+    ? { role: 'img', 'aria-label': monthlyContributionsLabel, tabIndex: 0 }
+    : {}
 
   return (
     <Chapter>
@@ -131,10 +135,8 @@ export function TheRhythmChapter({
         </p>
         {/* Desktop: horizontal bar chart */}
         <div
-          role="group"
-          aria-label={monthlyActivityLabel}
-          tabIndex={0}
-          className="group/chart hidden sm:flex items-end gap-2 md:gap-3 h-48 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+          {...chartAccessibilityProps}
+          className="group/chart hidden sm:flex items-end gap-2 md:gap-3 h-48 rounded-md"
         >
           {data.contributionsByMonth.map((month, index) => {
             // Use Math.max with 0 as first argument to prevent -Infinity on empty array
