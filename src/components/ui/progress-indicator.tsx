@@ -1,5 +1,6 @@
 'use client'
 
+import { useState } from 'react'
 import { cn } from '@/lib/utils'
 import { MobileProgressBar } from './mobile-progress-bar'
 
@@ -21,6 +22,8 @@ export function ProgressIndicator({
   chapterNames,
   offsetTopVar,
 }: ProgressIndicatorProps) {
+  const [dismissedLabelIndex, setDismissedLabelIndex] = useState<number | null>(null)
+
   return (
     <>
       <MobileProgressBar
@@ -43,6 +46,7 @@ export function ProgressIndicator({
           const isActive = chapterNum === currentChapter
           const isPast = chapterNum < currentChapter
           const chapterName = chapterNames?.[i]
+          const isLabelDismissed = dismissedLabelIndex === i
 
           return (
             <div key={i} className="relative group flex items-center justify-end">
@@ -52,7 +56,9 @@ export function ProgressIndicator({
                   className={cn(
                     'absolute right-[38px] px-2 py-1 rounded text-caption whitespace-nowrap',
                     'bg-bg-elevated text-text-secondary',
-                    'reveal-on-interact opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100',
+                    'reveal-on-interact opacity-0',
+                    !isLabelDismissed &&
+                      'group-hover:opacity-100 group-has-[:focus-visible]:opacity-100',
                     'transition-opacity duration-200',
                     'pointer-events-none'
                   )}
@@ -62,7 +68,12 @@ export function ProgressIndicator({
               )}
               <button
                 onClick={() => onChapterClick?.(i)}
-                className="group/step inline-flex min-h-11 min-w-11 items-center justify-center focus:outline-none"
+                onKeyDown={(event) => {
+                  if (event.key === 'Escape') setDismissedLabelIndex(i)
+                }}
+                onFocus={() => setDismissedLabelIndex(null)}
+                onBlur={() => setDismissedLabelIndex(null)}
+                className="group/step inline-flex min-h-11 min-w-11 items-center justify-center focus-visible:outline focus-visible:outline-2 focus-visible:outline-transparent"
                 aria-label={`Go to ${chapterName || `chapter ${chapterNum}`}`}
                 aria-current={isActive ? 'step' : undefined}
               >
