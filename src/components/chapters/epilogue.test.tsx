@@ -271,3 +271,27 @@ describe('EpilogueChapter viewport', () => {
     )
   })
 })
+
+describe('EpilogueChapter home indicator', () => {
+  const data: EpilogueData = {
+    year: 2024,
+    username: 'testuser',
+    totalContributions: 1000,
+    activeDays: 200,
+    topLanguage: 'TypeScript',
+    pullRequestsMerged: 50,
+    longestStreak: 14,
+  }
+
+  it('It keeps the bottom padding at least the safe-area inset so content clears the home indicator', () => {
+    const { container } = render(<EpilogueChapter data={data} />)
+
+    expect(container.querySelector('section')).toHaveClass('pb-[max(5rem,env(safe-area-inset-bottom))]')
+  })
+
+  it('It keeps the loading skeleton clear of the home indicator too', () => {
+    const { container } = render(<EpilogueChapter data={null} isLoading />)
+
+    expect(container.querySelector('section')).toHaveClass('pb-[env(safe-area-inset-bottom)]')
+  })
+})
