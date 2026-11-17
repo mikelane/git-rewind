@@ -144,6 +144,26 @@ describe('DemoExperience mobile scrolling', () => {
   })
 })
 
+describe('DemoExperience safe areas and dynamic viewport', () => {
+  it('It renders the scroll container at the dynamic viewport height', () => {
+    render(<DemoExperience year={2026} />)
+
+    expect(screen.getByRole('main')).toHaveClass('h-dvh')
+    expect(screen.getByRole('main')).not.toHaveClass('h-screen')
+  })
+
+  it.each([
+    'pt-[max(0.5rem,env(safe-area-inset-top))]',
+    'pl-[max(1rem,env(safe-area-inset-left))]',
+    'pr-[max(1rem,env(safe-area-inset-right))]',
+  ])('It pads the demo banner with %s', (utility) => {
+    render(<DemoExperience year={2026} />)
+
+    const banner = screen.getByText(/This is a demo with sample data/).parentElement
+    expect(banner).toHaveClass(utility)
+  })
+})
+
 describe('DemoExperience progress dot scrolling', () => {
   const scrollIntoView = vi.fn()
 

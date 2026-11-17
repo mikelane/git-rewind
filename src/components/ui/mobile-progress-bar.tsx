@@ -1,5 +1,7 @@
 'use client'
 
+import { cn } from '@/lib/utils'
+
 interface MobileProgressBarProps {
   currentChapter: number
   totalChapters: number
@@ -23,8 +25,11 @@ export function MobileProgressBar({
       aria-valuemax={totalChapters}
       aria-valuenow={currentChapter}
       aria-valuetext={`Chapter ${currentChapter} of ${totalChapters}`}
-      className="fixed left-0 right-0 z-40 h-1 bg-border-subtle md:hidden"
-      style={{ top: offsetTopVar ? `var(${offsetTopVar}, 0px)` : '0px' }}
+      className={cn(
+        'fixed left-0 right-0 z-40 h-1 bg-border-subtle md:hidden',
+        !offsetTopVar && 'top-[env(safe-area-inset-top,0px)]'
+      )}
+      style={offsetTopVar ? { top: `var(${offsetTopVar}, 0px)` } : undefined}
     >
       <div
         className="h-full bg-accent transition-[width] duration-300 motion-reduce:transition-none"

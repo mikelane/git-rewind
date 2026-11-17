@@ -51,10 +51,10 @@ describe('MobileProgressBar', () => {
     expect(screen.getByRole('progressbar').style.top).toBe('var(--demo-banner-h, 0px)')
   })
 
-  it('It sits at the top when given no offset variable', () => {
+  it('It sits at the top safe-area inset when given no offset variable', () => {
     render(<MobileProgressBar currentChapter={1} totalChapters={6} />)
 
-    expect(screen.getByRole('progressbar').style.top).toBe('0px')
+    expect(screen.getByRole('progressbar')).toHaveClass('top-[env(safe-area-inset-top,0px)]')
   })
 
   it('It does not animate the fill under reduced motion', () => {

@@ -129,6 +129,13 @@ describe('RewindPage', () => {
       expect(main).not.toHaveClass('snap-mandatory')
     })
 
+    it('It renders the scroll container at the dynamic viewport height', async () => {
+      const main = await renderLoadedStory()
+
+      expect(main).toHaveClass('h-dvh')
+      expect(main).not.toHaveClass('h-screen')
+    })
+
     it('It renders six chapter wrappers', async () => {
       const main = await renderLoadedStory()
 

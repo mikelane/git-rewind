@@ -147,7 +147,7 @@ export function DemoExperience({ year }: { year: number }) {
   return (
     <main
       ref={mainRef}
-      className="relative h-screen overflow-y-auto snap-y snap-proximity md:snap-mandatory"
+      className="relative h-dvh overflow-y-auto snap-y snap-proximity md:snap-mandatory"
       style={{ scrollPaddingTop: 'var(--demo-banner-h, 0px)' }}
     >
       {/* Demo banner */}
@@ -156,7 +156,9 @@ export function DemoExperience({ year }: { year: number }) {
         className={cn(
           'fixed top-0 left-0 right-0 z-50',
           'bg-accent/90 backdrop-blur-sm',
-          'py-2 px-4 text-center'
+          'pt-[max(0.5rem,env(safe-area-inset-top))] pb-2',
+          'pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]',
+          'text-center'
         )}
       >
         <p className="text-body-sm text-text-inverse font-medium">

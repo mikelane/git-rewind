@@ -37,4 +37,27 @@ describe('ProgressIndicator', () => {
 
     expect(screen.getByText('Rhythm')).toHaveClass('right-[38px]')
   })
+
+  it('keeps the rail at least the safe-area inset from the right edge', () => {
+    renderIndicator()
+
+    expect(screen.getByRole('navigation')).toHaveClass(
+      'right-[max(0.375rem,env(safe-area-inset-right))]'
+    )
+  })
+
+  it('marks the hover labels with the rail-label class that reduced motion leaves hidden', () => {
+    renderIndicator()
+
+    expect(screen.getByText('Rhythm')).toHaveClass('rail-label', 'opacity-0')
+  })
+
+  it('reveals the chapter name on hover and on keyboard focus of the step button', () => {
+    renderIndicator()
+
+    expect(screen.getByText('Rhythm')).toHaveClass(
+      'group-hover:opacity-100',
+      'group-has-[:focus-visible]:opacity-100'
+    )
+  })
 })
