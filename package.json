@@ -38,7 +38,7 @@
     "typescript": "^5.3.0",
     "vitest": "^4.0.16"
   },
-  "pnpm": {
-    "onlyBuiltDependencies": ["esbuild", "unrs-resolver"]
+  "engines": {
+    "pnpm": ">=10"
   }
 }

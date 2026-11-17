@@ -37,7 +37,7 @@ Git Rewind is fully open source and designed to be self-hosted.
 ### Prerequisites
 
 - Node.js 20+
-- pnpm
+- pnpm 10+
 
 ### 1. Clone and Install
 
