@@ -79,6 +79,8 @@ export default function RewindPage() {
   const [retrying, setRetrying] = useState(false)
   const [failedRetries, setFailedRetries] = useState(0)
   const retryInFlightRef = useRef(false)
+  // Only the most recently started selected-year request may write stats or error state
+  const latestRequestRef = useRef(0)
   // The focused Try again button unmounts when a retry succeeds; move focus to the story
   const focusStoryAfterRetryRef = useRef(false)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
@@ -279,7 +281,15 @@ export default function RewindPage() {
     }
   }, [showLoadedStats])
 
+  const startSelectedYearRequest = useCallback(() => {
+    latestRequestRef.current += 1
+    return latestRequestRef.current
+  }, [])
+
+  const isLatestRequest = useCallback((requestId: number) => latestRequestRef.current === requestId, [])
+
   const fetchStats = useCallback(async (year: number) => {
+    const requestId = startSelectedYearRequest()
     setLoading(true)
     setError(null)
     setFailedRetries(0)
@@ -289,11 +299,16 @@ export default function RewindPage() {
     try {
       // Fetch the selected year
       const result = await fetchYearStats(year)
+      if (!isLatestRequest(requestId)) {
+        return
+      }
       setError(applyFetchResult(year, result))
     } finally {
-      setLoading(false)
+      if (isLatestRequest(requestId)) {
+        setLoading(false)
+      }
     }
-  }, [fetchYearStats, applyFetchResult])
+  }, [fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest])
 
   const handleRetry = useCallback(async () => {
     if (retryInFlightRef.current) {
@@ -301,8 +316,12 @@ export default function RewindPage() {
     }
     retryInFlightRef.current = true
     setRetrying(true)
+    const requestId = startSelectedYearRequest()
     try {
       const result = await fetchYearStats(selectedYear)
+      if (!isLatestRequest(requestId)) {
+        return
+      }
       const loadError = applyFetchResult(selectedYear, result)
       setError(loadError)
       setFailedRetries(count => (loadError === null ? 0 : count + 1))
@@ -311,7 +330,7 @@ export default function RewindPage() {
       retryInFlightRef.current = false
       setRetrying(false)
     }
-  }, [selectedYear, fetchYearStats, applyFetchResult])
+  }, [selectedYear, fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
