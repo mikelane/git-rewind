@@ -1,4 +1,4 @@
-import { useCallback, useState, type MutableRefObject } from 'react'
+import { useCallback, useState } from 'react'
 import type { YearStats } from '@/lib/github'
 import { getCached } from '@/lib/cache'
 import { compareYears, type YearComparison } from '@/lib/comparisons'
@@ -9,9 +9,9 @@ const CURRENT_YEAR = new Date().getFullYear()
 export const AVAILABLE_YEARS: readonly number[] = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
 
 interface UseYearPrefetchOptions {
-  fetchYearStats: (year: number) => Promise<FetchYearResult>
-  currentYearRef: MutableRefObject<number>
-  mountedRef: MutableRefObject<boolean>
+  readonly fetchYearStats: (year: number) => Promise<FetchYearResult>
+  readonly currentYearRef: { readonly current: number }
+  readonly mountedRef: { readonly current: boolean }
 }
 
 export interface UseYearPrefetchResult {

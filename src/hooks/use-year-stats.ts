@@ -13,7 +13,6 @@ import {
   type LoadError,
 } from '@/lib/year-stats-fetch'
 
-const CURRENT_YEAR = new Date().getFullYear()
 export { AVAILABLE_YEARS }
 
 export interface UseYearStatsResult {
@@ -58,7 +57,7 @@ export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResu
   }, [])
   // The focused Try again button unmounts when a retry succeeds; move focus to the story
   const focusStoryAfterRetryRef = useRef(false)
-  const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
+  const [selectedYear, setSelectedYear] = useState(AVAILABLE_YEARS[0])
   const [refreshing, setRefreshing] = useState(false)
   // Populated only after mount so the first client render matches the server render
   const [cachedYears, setCachedYears] = useState<Set<number>>(new Set())
