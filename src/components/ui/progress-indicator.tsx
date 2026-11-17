@@ -52,7 +52,7 @@ export function ProgressIndicator({
                   className={cn(
                     'absolute right-[38px] px-2 py-1 rounded text-caption whitespace-nowrap',
                     'bg-bg-elevated text-text-secondary',
-                    'rail-label opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100',
+                    'reveal-on-interact opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100',
                     'transition-opacity duration-200',
                     'pointer-events-none'
                   )}

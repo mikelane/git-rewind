@@ -55,8 +55,8 @@ describe('RootLayout viewport', () => {
 })
 
 describe('globals.css reduced motion', () => {
-  it('It excludes the dot-rail labels from the global opacity-0 override', () => {
-    expect(globalsCss).toMatch(/\.opacity-0:not\(\.rail-label\)\s*\{\s*opacity:\s*1\s*!important/)
+  it('It excludes hover and focus revealed labels from the global opacity-0 override', () => {
+    expect(globalsCss).toMatch(/\.opacity-0:not\(\.reveal-on-interact\)\s*\{\s*opacity:\s*1\s*!important/)
   })
 
   it('It no longer forces every opacity-0 element visible', () => {

@@ -89,6 +89,9 @@ export function TheRhythmChapter({
   const consistencyPercentage = Math.round((data.activeDays / data.totalDays) * 100)
   const activeContext = getRhythmActiveContext(activityLevel, consistencyPercentage)
   const transition = getRhythmTransition(activityLevel)
+  const monthlyActivityLabel = `Monthly activity: ${data.contributionsByMonth
+    .map((m) => `${m.month} ${m.count}`)
+    .join(', ')}`
 
   return (
     <Chapter>
@@ -127,7 +130,12 @@ export function TheRhythmChapter({
           Monthly Activity
         </p>
         {/* Desktop: horizontal bar chart */}
-        <div className="hidden sm:flex items-end gap-2 md:gap-3 h-48">
+        <div
+          role="group"
+          aria-label={monthlyActivityLabel}
+          tabIndex={0}
+          className="group/chart hidden sm:flex items-end gap-2 md:gap-3 h-48 rounded-md focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-accent"
+        >
           {data.contributionsByMonth.map((month, index) => {
             // Use Math.max with 0 as first argument to prevent -Infinity on empty array
             const maxCount = Math.max(0, ...data.contributionsByMonth.map((m) => m.count))
@@ -142,10 +150,15 @@ export function TheRhythmChapter({
                 {/* Bar container */}
                 <div className="w-full h-40 flex flex-col justify-end items-center">
                   {/* Count label - positioned directly above bar */}
-                  <span className={cn(
-                    'text-caption tabular-nums whitespace-nowrap mb-2 transition-opacity',
-                    isBusiest ? 'text-text-secondary' : 'opacity-0 group-hover:opacity-100 text-text-secondary'
-                  )}>
+                  <span
+                    aria-hidden="true"
+                    className={cn(
+                      'text-caption tabular-nums whitespace-nowrap mb-2 transition-opacity',
+                      isBusiest
+                        ? 'text-text-secondary'
+                        : 'reveal-on-interact opacity-0 group-hover:opacity-100 group-focus-visible/chart:opacity-100 text-text-secondary'
+                    )}
+                  >
                     {month.count.toLocaleString()}
                   </span>
                   {/* The bar */}

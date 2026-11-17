@@ -46,10 +46,10 @@ describe('ProgressIndicator', () => {
     )
   })
 
-  it('It marks the hover labels with the rail-label class that reduced motion leaves hidden', () => {
+  it('It marks the hover labels with the reveal-on-interact class that reduced motion leaves hidden', () => {
     renderIndicator()
 
-    expect(screen.getByText('Rhythm')).toHaveClass('rail-label', 'opacity-0')
+    expect(screen.getByText('Rhythm')).toHaveClass('reveal-on-interact', 'opacity-0')
   })
 
   it('It reveals the chapter name on hover and on keyboard focus of the step button', () => {
