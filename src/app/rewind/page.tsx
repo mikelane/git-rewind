@@ -41,6 +41,12 @@ type FetchError =
 
 type FetchYearResult = { ok: true; stats: YearStats } | FetchError
 
+const LOGIN_PATH = '/api/auth/login'
+
+function isUnauthorized(result: FetchYearResult): boolean {
+  return !result.ok && result.kind === 'http' && result.status === 401
+}
+
 type LoadError = FetchError | { ok: false; kind: 'processing' }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -152,11 +158,6 @@ export default function RewindPage() {
       response = await fetch(`/api/stats?year=${year}&clientDate=${clientDate}`)
     } catch {
       return { ok: false, kind: 'network' }
-    }
-
-    if (response.status === 401) {
-      window.location.href = '/api/auth/login'
-      return { ok: false, kind: 'http', status: 401 }
     }
 
     if (!response.ok) {
@@ -288,6 +289,13 @@ export default function RewindPage() {
 
   const isLatestRequest = useCallback((requestId: number) => latestRequestRef.current === requestId, [])
 
+  // Only a selected-year result may force re-auth; background prefetches never call this
+  const redirectIfUnauthorized = useCallback((result: FetchYearResult) => {
+    if (isUnauthorized(result)) {
+      window.location.href = LOGIN_PATH
+    }
+  }, [])
+
   const fetchStats = useCallback(async (year: number) => {
     const requestId = startSelectedYearRequest()
     setLoading(true)
@@ -302,13 +310,14 @@ export default function RewindPage() {
       if (!isLatestRequest(requestId)) {
         return
       }
+      redirectIfUnauthorized(result)
       setError(applyFetchResult(year, result))
     } finally {
       if (isLatestRequest(requestId)) {
         setLoading(false)
       }
     }
-  }, [fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest])
+  }, [fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest, redirectIfUnauthorized])
 
   const handleRetry = useCallback(async () => {
     if (retryInFlightRef.current) {
@@ -322,6 +331,7 @@ export default function RewindPage() {
       if (!isLatestRequest(requestId)) {
         return
       }
+      redirectIfUnauthorized(result)
       const loadError = applyFetchResult(selectedYear, result)
       setError(loadError)
       setFailedRetries(count => (loadError === null ? 0 : count + 1))
@@ -330,7 +340,7 @@ export default function RewindPage() {
       retryInFlightRef.current = false
       setRetrying(false)
     }
-  }, [selectedYear, fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest])
+  }, [selectedYear, fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest, redirectIfUnauthorized])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -385,7 +395,7 @@ export default function RewindPage() {
           Try again
         </button>
         <a
-          href="/api/auth/login"
+          href={LOGIN_PATH}
           className="mt-4 inline-flex min-h-11 items-center text-body text-text-secondary underline hover:text-text-primary"
         >
           Sign in again

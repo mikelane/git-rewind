@@ -931,4 +931,50 @@ describe('RewindPage fetch races', () => {
       expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
     })
   })
+  describe('a 401 response', () => {
+    it('It redirects to sign in when the selected year returns 401', async () => {
+      render(<RewindPage />)
+
+      await respond(selectedYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(true)
+    })
+
+    it('It does not redirect when a background prefetch of another year returns 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      await respond(olderYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+
+    it('It does not cache a year whose background prefetch returned 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      await respond(olderYear, 0, httpStatus(401))
+
+      expect(vi.mocked(setCache).mock.calls.map(call => call[1])).toEqual([selectedYear])
+    })
+
+    it('It keeps the story on screen when a background prefetch returns 401', async () => {
+      render(<RewindPage />)
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      await respond(olderYear, 0, httpStatus(401))
+
+      expect(shownYear()).toBe(String(selectedYear))
+    })
+
+    it('It does not redirect when an earlier year returns 401 after the user switched away', async () => {
+      render(<RewindPage />)
+      switchTo(olderYear)
+      await respond(olderYear, 0, okFor(olderYear))
+
+      await respond(selectedYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+  })
 })
