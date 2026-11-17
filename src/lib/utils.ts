@@ -1,5 +1,28 @@
 import { clsx, type ClassValue } from 'clsx'
-import { twMerge } from 'tailwind-merge'
+import { extendTailwindMerge } from 'tailwind-merge'
+
+// Must list every key of theme.extend.fontSize in tailwind.config.ts;
+// utils.test.ts fails if a token is missing.
+const CUSTOM_FONT_SIZE_TOKENS = [
+  'display-2xl',
+  'display-xl',
+  'display-lg',
+  'display-md',
+  'display-sm',
+  'heading',
+  'lead',
+  'body',
+  'body-sm',
+  'caption',
+]
+
+const twMerge = extendTailwindMerge({
+  extend: {
+    classGroups: {
+      'font-size': [{ text: CUSTOM_FONT_SIZE_TOKENS }],
+    },
+  },
+})
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
