@@ -32,6 +32,7 @@ export class GitHubClient {
   private async query<T>(query: string, variables?: Record<string, unknown>): Promise<T> {
     const response = await fetch(GITHUB_GRAPHQL_URL, {
       method: 'POST',
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${this.accessToken}`,
         'Content-Type': 'application/json',
@@ -54,6 +55,7 @@ export class GitHubClient {
 
   private async restGet<T>(path: string): Promise<T> {
     const response = await fetch(`${GITHUB_REST_URL}${path}`, {
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${this.accessToken}`,
         'Accept': 'application/vnd.github.v3+json',

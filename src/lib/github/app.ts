@@ -52,6 +52,7 @@ export async function getInstallationToken(installationId: number): Promise<stri
     `${GITHUB_API_URL}/app/installations/${installationId}/access_tokens`,
     {
       method: 'POST',
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${jwt}`,
         'Accept': 'application/vnd.github+json',
@@ -75,6 +76,7 @@ export async function getInstallationToken(installationId: number): Promise<stri
 export async function getUserInstallation(userAccessToken: string): Promise<Installation | null> {
   // First get the user's login
   const userResponse = await fetch(`${GITHUB_API_URL}/user`, {
+    cache: 'no-store',
     headers: {
       'Authorization': `Bearer ${userAccessToken}`,
       'Accept': 'application/vnd.github+json',
@@ -92,6 +94,7 @@ export async function getUserInstallation(userAccessToken: string): Promise<Inst
   const jwt = await generateAppJWT()
 
   const installationsResponse = await fetch(`${GITHUB_API_URL}/app/installations`, {
+    cache: 'no-store',
     headers: {
       'Authorization': `Bearer ${jwt}`,
       'Accept': 'application/vnd.github+json',

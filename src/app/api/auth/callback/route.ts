@@ -71,6 +71,7 @@ export async function GET(request: NextRequest) {
       'https://github.com/login/oauth/access_token',
       {
         method: 'POST',
+        cache: 'no-store',
         headers: {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
