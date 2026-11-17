@@ -42,7 +42,7 @@ describe('GitHub App fetch caching', () => {
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve({ login: 'octo' }) })
       .mockResolvedValueOnce({ ok: true, json: () => Promise.resolve([]) })
 
-    await getUserInstallation('gho_token')
+    await getUserInstallation('test-access-token')
 
     expect(fetchMock.mock.calls[0][0]).toBe('https://api.github.com/user')
     expect(fetchMock.mock.calls[0][1]).toMatchObject({ cache: 'no-store' })
