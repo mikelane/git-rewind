@@ -25,7 +25,7 @@ describe('GitHubClient fetch caching', () => {
   it('does not cache GraphQL requests made with a user token', async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: () => Promise.resolve({ data: { viewer: { login: 'octo' } } }),
+      json: () => Promise.resolve({ data: { viewer: { login: 'octo', name: null, avatarUrl: 'https://example.com/octo.png' } } }),
     })
 
     await new GitHubClient('test-access-token').getViewer()
