@@ -3,19 +3,25 @@ import { Analytics } from '@vercel/analytics/react'
 import { SpeedInsights } from '@vercel/speed-insights/next'
 import { createRootMetadata } from '@/lib/seo'
 import { getMarketingYear } from '@/lib/marketing-year'
-import { Inter, Space_Grotesk } from 'next/font/google'
+import localFont from 'next/font/local'
 import './globals.css'
 
-const displayFont = Space_Grotesk({
-  subsets: ['latin'],
-  weight: ['500', '600', '700'],
+const displayFont = localFont({
+  src: [
+    { path: './fonts/SpaceGrotesk-500.woff2', weight: '500', style: 'normal' },
+    { path: './fonts/SpaceGrotesk-600.woff2', weight: '600', style: 'normal' },
+    { path: './fonts/SpaceGrotesk-700.woff2', weight: '700', style: 'normal' },
+  ],
   display: 'swap',
   variable: '--font-display',
 })
 
-const bodyFont = Inter({
-  subsets: ['latin'],
-  weight: ['400', '500', '600'],
+const bodyFont = localFont({
+  src: [
+    { path: './fonts/Inter-400.woff2', weight: '400', style: 'normal' },
+    { path: './fonts/Inter-500.woff2', weight: '500', style: 'normal' },
+    { path: './fonts/Inter-600.woff2', weight: '600', style: 'normal' },
+  ],
   display: 'swap',
   variable: '--font-body',
 })

@@ -1,4 +1,4 @@
-import { readFileSync } from 'node:fs'
+import { existsSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, it, expect, vi } from 'vitest'
@@ -6,17 +6,16 @@ import tailwindConfig from '../../tailwind.config'
 
 const fontLoaderCalls = vi.hoisted(() => [] as Array<{ name: string; options: Record<string, unknown> }>)
 
-vi.mock('next/font/google', () => {
-  const loader = (name: string) => (options: Record<string, unknown>) => {
-    fontLoaderCalls.push({ name, options })
+vi.mock('next/font/local', () => ({
+  default: (options: Record<string, unknown>) => {
     const { variable } = options
     if (typeof variable !== 'string') {
-      throw new Error(`${name} was loaded without a string variable option`)
+      throw new Error('A local font was loaded without a string variable option')
     }
+    fontLoaderCalls.push({ name: variable, options })
     return { variable: `${variable}-hashed` }
-  }
-  return { Space_Grotesk: loader('Space_Grotesk'), Inter: loader('Inter') }
-})
+  },
+}))
 vi.mock('@vercel/analytics/react', () => ({ Analytics: () => null }))
 vi.mock('@vercel/speed-insights/next', () => ({ SpeedInsights: () => null }))
 
@@ -64,23 +63,31 @@ describe('globals.css reduced motion', () => {
   })
 })
 
+type FontSource = { path: string; weight: string; style: string }
+
+function fontSources(variable: string): FontSource[] {
+  const src = fontOptions(variable)?.src
+  return Array.isArray(src) ? src : []
+}
+
 describe('RootLayout fonts', () => {
   it('It loads Space Grotesk at weights 500, 600 and 700', () => {
-    expect(fontOptions('Space_Grotesk')).toMatchObject({
-      weight: ['500', '600', '700'],
-      subsets: ['latin'],
-      display: 'swap',
-      variable: '--font-display',
-    })
+    expect(fontOptions('--font-display')).toMatchObject({ display: 'swap', variable: '--font-display' })
+    expect(fontSources('--font-display').map((source) => source.weight)).toEqual(['500', '600', '700'])
   })
 
   it('It loads Inter at weights 400, 500 and 600', () => {
-    expect(fontOptions('Inter')).toMatchObject({
-      weight: ['400', '500', '600'],
-      subsets: ['latin'],
-      display: 'swap',
-      variable: '--font-body',
-    })
+    expect(fontOptions('--font-body')).toMatchObject({ display: 'swap', variable: '--font-body' })
+    expect(fontSources('--font-body').map((source) => source.weight)).toEqual(['400', '500', '600'])
+  })
+
+  it.each(['--font-display', '--font-body'])('It points every %s source at a font file that exists', (variable) => {
+    const sources = fontSources(variable)
+
+    expect(sources.length).toBeGreaterThan(0)
+    for (const { path } of sources) {
+      expect(existsSync(join(__dirname, path))).toBe(true)
+    }
   })
 
   it('It puts both font variables on the html element', () => {
