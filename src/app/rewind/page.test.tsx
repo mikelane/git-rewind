@@ -54,7 +54,8 @@ vi.mock('@/lib/format-days', () => ({
 
 import { renderToString } from 'react-dom/server'
 import { getCached, setCache, clearCacheForYear } from '@/lib/cache'
-import { compareYears } from '@/lib/comparisons'
+import { compareYears, type YearComparison } from '@/lib/comparisons'
+import type { YearStats } from '@/lib/github'
 import RewindPage from './page'
 
 const originalFetch = global.fetch
@@ -286,15 +287,18 @@ describe('RewindPage', () => {
     const mainYearCalls = () => vi.mocked(global.fetch).mock.calls.filter(isMainYearCall)
 
     // Responses for the selected year are consumed in order; other years always succeed.
-    const mockMainYearResponses = (...responses: Array<() => unknown>) => {
+    const mainYearFetch = (...responses: Array<() => unknown>) => {
       const queue = [...responses]
-      global.fetch = vi.fn().mockImplementation((url: string) => {
+      return (url: string): Promise<unknown> => {
         if (!url.startsWith(mainYearUrl)) {
           return Promise.resolve(okResponse())
         }
         const next = queue.shift() ?? okResponse
         return Promise.resolve(next())
-      })
+      }
+    }
+    const mockMainYearResponses = (...responses: Array<() => unknown>) => {
+      global.fetch = vi.fn().mockImplementation(mainYearFetch(...responses))
     }
 
     const originalLocation = window.location
@@ -321,7 +325,7 @@ describe('RewindPage', () => {
     const findTryAgain = () => screen.findByRole('button', { name: 'Try again' })
 
     it.each(retryableFailures)('It renders a Try again button element when the fetch fails with %s', async (_failureName, failure) => {
-      mockMainYearResponses(failure as () => unknown)
+      mockMainYearResponses(failure)
       render(<RewindPage />)
 
       const button = await findTryAgain()
@@ -330,7 +334,7 @@ describe('RewindPage', () => {
     })
 
     it.each(retryableFailures)('It renders the shared message when the fetch fails with %s', async (_failureName, failure) => {
-      mockMainYearResponses(failure as () => unknown)
+      mockMainYearResponses(failure)
       render(<RewindPage />)
 
       await findTryAgain()
@@ -339,7 +343,7 @@ describe('RewindPage', () => {
     })
 
     it.each(retryableFailures)('It renders a Sign in again link when the fetch fails with %s', async (_failureName, failure) => {
-      mockMainYearResponses(failure as () => unknown)
+      mockMainYearResponses(failure)
       render(<RewindPage />)
 
       await findTryAgain()
@@ -348,7 +352,7 @@ describe('RewindPage', () => {
     })
 
     it.each(failures)('It refetches the same year without navigating when retrying after %s', async (_failureName, failure) => {
-      mockMainYearResponses(failure as () => unknown, () => httpResponse(500))
+      mockMainYearResponses(failure, () => httpResponse(500))
       render(<RewindPage />)
 
       fireEvent.click(await findTryAgain())
@@ -399,19 +403,8 @@ describe('RewindPage', () => {
 
     describe('while a retry is in flight', () => {
       const startRetry = async () => {
-        mockMainYearResponses(() => httpResponse(500))
-        const baseFetch = vi.mocked(global.fetch).getMockImplementation() as (url: string) => Promise<unknown>
-        const pendingRetry = new Promise(() => {})
-        let mainCalls = 0
-        global.fetch = vi.fn().mockImplementation((url: string) => {
-          if (url.startsWith(mainYearUrl)) {
-            mainCalls++
-            if (mainCalls === 2) {
-              return pendingRetry
-            }
-          }
-          return baseFetch(url)
-        })
+        // Promise.resolve adopts the never-settling promise, so the retry stays in flight
+        mockMainYearResponses(() => httpResponse(500), () => new Promise(() => {}))
         render(<RewindPage />)
         fireEvent.click(await findTryAgain())
         await waitFor(() => expect(mainYearCalls()).toHaveLength(2))
@@ -423,11 +416,14 @@ describe('RewindPage', () => {
         expect(screen.getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-disabled', 'true')
       })
 
-      it('It keeps focus on the Try again button', async () => {
-        await startRetry()
-
-        const button = screen.getByRole('button', { name: 'Try again' })
+      it('It keeps focus on the Try again button that was focused before the click', async () => {
+        mockMainYearResponses(() => httpResponse(500), () => new Promise(() => {}))
+        render(<RewindPage />)
+        const button = await findTryAgain()
         button.focus()
+
+        fireEvent.click(button)
+        await waitFor(() => expect(button).toHaveAttribute('aria-disabled', 'true'))
 
         expect(button).not.toHaveAttribute('disabled')
         expect(button).toHaveFocus()
@@ -472,7 +468,8 @@ describe('RewindPage', () => {
       render(<RewindPage />)
 
       expect(await screen.findByTestId('prologue')).toBeInTheDocument()
-      await waitFor(() => expect(vi.mocked(global.fetch).mock.calls.length).toBeGreaterThan(1))
+      await waitFor(() => expect(vi.mocked(global.fetch).mock.calls.filter(c => String(c[0]).startsWith(`/api/stats?year=${year - 1}&`))).toHaveLength(1))
+      await act(async () => {})
       expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
     })
   })
@@ -492,45 +489,41 @@ const okBody = (y: number) => ({
 const urlFor = (y: number) => `/api/stats?year=${y}&clientDate=`
 const callsFor = (y: number) => vi.mocked(global.fetch).mock.calls.filter(c => String(c[0]).startsWith(urlFor(y)))
 
+// getCached<T> is generic over whatever the caller expects to read back, and a
+// test double cannot prove an arbitrary T. The cache stands in for untrusted
+// localStorage (these tests feed it corrupt entries on purpose), so this is the
+// one deliberate assertion in the suite, kept here instead of at every call site.
+const fakeGetCached = (lookup: (y: number) => unknown): typeof getCached =>
+  ((_ns: string, y: number) => lookup(y) ?? null) as typeof getCached
+
+const emptyComparison: YearComparison = {
+  contributionsDelta: 0,
+  contributionsPercentChange: 0,
+  activeDaysDelta: 0,
+  longestStreakDelta: 0,
+  pullRequestsDelta: 0,
+  newLanguages: [],
+  droppedLanguages: [],
+  consistencyImproved: false,
+  narrativeInsights: [],
+  comparisonType: 'full-year',
+}
+
 describe('RewindPage retry flow regressions', () => {
   const originalFetch = global.fetch
   const originalLocation = window.location
   beforeEach(() => {
     vi.clearAllMocks()
+    // clearAllMocks keeps implementations; reset the ones these tests override so they cannot leak
     vi.mocked(getCached).mockImplementation(() => null)
+    vi.mocked(setCache).mockImplementation(() => {})
+    vi.mocked(clearCacheForYear).mockImplementation(() => {})
+    vi.mocked(compareYears).mockImplementation(() => emptyComparison)
     Object.defineProperty(window, 'location', { value: { href: '/rewind' }, writable: true, configurable: true })
   })
   afterEach(() => {
     global.fetch = originalFetch
     Object.defineProperty(window, 'location', { value: originalLocation, writable: true, configurable: true })
-  })
-
-  it('It shows the error view when the selected year returns a 200 with a null JSON body', async () => {
-    global.fetch = vi.fn().mockImplementation((url: string) =>
-      Promise.resolve(url.startsWith(urlFor(year))
-        ? { ok: true, status: 200, json: () => Promise.resolve(null) }
-        : { ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
-    )
-    render(<RewindPage />)
-
-    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
-  })
-
-  it('It changes live-region content when a retry fails so screen readers hear the outcome', async () => {
-    const liveText = () =>
-      Array.from(document.querySelectorAll('[aria-live],[role="status"],[role="alert"]'))
-        .map(el => el.textContent ?? '')
-        .join('|')
-    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({}) })
-    render(<RewindPage />)
-    const button = await screen.findByRole('button', { name: 'Try again' })
-    const before = liveText()
-
-    fireEvent.click(button)
-    await waitFor(() => expect(callsFor(year)).toHaveLength(2))
-    await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-disabled', 'false'))
-
-    expect(liveText()).not.toBe(before)
   })
 
   it('It puts the load error message in a polite live region', async () => {
@@ -553,6 +546,8 @@ describe('RewindPage retry flow regressions', () => {
     ['null', null],
     ['a string', 'oops'],
     ['a number', 42],
+    ['an array', []],
+    ['an error payload without stats fields', { error: 'Internal error' }],
   ])('It shows the error view and caches nothing when a 200 body is %s', async (_name, body) => {
     global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(body) })
     render(<RewindPage />)
@@ -562,7 +557,7 @@ describe('RewindPage retry flow regressions', () => {
   })
 
   it('It shows the error view when computing the comparison throws after a successful fetch', async () => {
-    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? okBody(year - 1) : null)) as typeof getCached)
+    vi.mocked(getCached).mockImplementation(fakeGetCached(y => (y === year - 1 ? okBody(year - 1) : null)))
     vi.mocked(compareYears).mockImplementation(() => {
       throw new TypeError('corrupt cached comparison data')
     })
@@ -573,61 +568,53 @@ describe('RewindPage retry flow regressions', () => {
     expect(screen.getByText("We couldn't load your GitHub data. This is usually temporary.")).toBeInTheDocument()
   })
 
-  it('It shows the error view, with no unhandled rejection, when a retry succeeds but computing the comparison throws', async () => {
-    const rejections: unknown[] = []
+  describe('when computing the comparison throws', () => {
+    // Swap the process handler in hooks so a failing waitFor cannot skip the restore
+    let rejections: unknown[] = []
+    let priorListeners: NodeJS.UnhandledRejectionListener[] = []
     const onRejection = (reason: unknown) => {
       rejections.push(reason)
     }
-    const priorListeners = process.listeners('unhandledRejection')
-    process.removeAllListeners('unhandledRejection')
-    process.on('unhandledRejection', onRejection)
-    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? okBody(year - 1) : null)) as typeof getCached)
-    vi.mocked(compareYears).mockImplementation(() => {
-      throw new TypeError('corrupt cached comparison data')
-    })
-    let mainCalls = 0
-    global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.startsWith(urlFor(year)) && ++mainCalls === 1) {
-        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
-      }
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
-    })
-    render(<RewindPage />)
-    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
-    await waitFor(() => expect(compareYears).toHaveBeenCalled())
-    await new Promise(resolve => setTimeout(resolve, 50))
-    process.removeAllListeners('unhandledRejection')
-    priorListeners.forEach(listener => process.on('unhandledRejection', listener))
+    const settle = () => new Promise(resolve => setTimeout(resolve, 50))
 
-    expect(rejections).toEqual([])
-    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    beforeEach(() => {
+      rejections = []
+      priorListeners = process.listeners('unhandledRejection')
+      process.removeAllListeners('unhandledRejection')
+      process.on('unhandledRejection', onRejection)
+      vi.mocked(getCached).mockImplementation(fakeGetCached(y => (y === year - 1 ? okBody(year - 1) : null)))
+      vi.mocked(compareYears).mockImplementation(() => {
+        throw new TypeError('corrupt cached comparison data')
+      })
+    })
+    afterEach(() => {
+      process.removeAllListeners('unhandledRejection')
+      priorListeners.forEach(listener => process.on('unhandledRejection', listener))
+    })
+
+    it('It shows the error view, with no unhandled rejection, when a retry succeeds', async () => {
+      global.fetch = vi.fn()
+        .mockResolvedValueOnce(failing500())
+        .mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+      render(<RewindPage />)
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+      await waitFor(() => expect(compareYears).toHaveBeenCalledTimes(1))
+      await settle()
+
+      expect(rejections).toEqual([])
+      expect(screen.getByRole('status')).toHaveTextContent("Still couldn't load your GitHub data. Try again in a moment.")
+    })
+
+    it('It leaves no unhandled rejection on the first load', async () => {
+      global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+      render(<RewindPage />)
+      await waitFor(() => expect(compareYears).toHaveBeenCalledTimes(1))
+      await settle()
+
+      expect(rejections).toEqual([])
+    })
   })
 
-  it('It leaves no unhandled rejection when computing the comparison throws', async () => {
-    const rejections: unknown[] = []
-    const onRejection = (reason: unknown) => {
-      rejections.push(reason)
-    }
-    const priorListeners = process.listeners('unhandledRejection')
-    process.removeAllListeners('unhandledRejection')
-    process.on('unhandledRejection', onRejection)
-    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? okBody(year - 1) : null)) as typeof getCached)
-    vi.mocked(compareYears).mockImplementation(() => {
-      throw new TypeError('corrupt cached comparison data')
-    })
-    global.fetch = vi.fn().mockImplementation(() =>
-      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
-    )
-    render(<RewindPage />)
-    await waitFor(() => expect(compareYears).toHaveBeenCalled())
-    await new Promise(resolve => setTimeout(resolve, 50))
-    process.removeAllListeners('unhandledRejection')
-    priorListeners.forEach(listener => process.on('unhandledRejection', listener))
-
-    expect(rejections).toEqual([])
-  })
-
-  // Test-gap probes (expected to PASS on correct code; they kill surviving mutants)
   it('It issues one retry fetch when Try again is clicked twice before React re-renders', async () => {
     global.fetch = vi.fn().mockImplementation((url: string) =>
       url.startsWith(urlFor(year)) && callsFor(year).length > 1
@@ -647,41 +634,60 @@ describe('RewindPage retry flow regressions', () => {
 
   it('It retries the switched-to year rather than the current year', async () => {
     const prev = year - 1
-    let prevCalls = 0
+    // For the previous year: background prefetch hangs, the explicit switch fails, the retry succeeds
+    const prevYearResponses = [() => new Promise(() => {}), () => Promise.resolve(failing500())]
     global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.startsWith(urlFor(prev))) {
-        prevCalls++
-        // prefetch (1) hangs, explicit fetch (2) fails, retry (3) succeeds
-        if (prevCalls === 1) {
-          return new Promise(() => {})
-        }
-        if (prevCalls === 2) {
-          return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
-        }
-      }
       const y = Number(new URL(url, 'http://x').searchParams.get('year'))
-      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
+      const okForYear = () => Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
+      const next = (y === prev ? prevYearResponses.shift() : undefined) ?? okForYear
+      return next()
     })
     render(<RewindPage />)
     await screen.findByTestId('prologue')
     fireEvent.click(screen.getByRole('button', { name: new RegExp(`View ${prev}`) }))
-    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    const tryAgain = await screen.findByRole('button', { name: 'Try again' })
+    const callsBeforeRetry = vi.mocked(global.fetch).mock.calls.length
 
-    await waitFor(() => expect(prevCalls).toBe(3))
+    fireEvent.click(tryAgain)
+
+    // A retry of the wrong year would also end with the previous year fetched (via prefetch),
+    // so the discriminating fact is which year the click itself requested first.
+    expect(String(vi.mocked(global.fetch).mock.calls[callsBeforeRetry][0])).toMatch(new RegExp(`^/api/stats\\?year=${prev}&`))
     expect(await screen.findByTestId('prologue')).toBeInTheDocument()
   })
 
-  it('It starts the comparison prefetch after a successful retry', async () => {
+  it('It moves focus to the story when a retry succeeds so focus is not lost with the unmounted button', async () => {
     let mainCalls = 0
     global.fetch = vi.fn().mockImplementation((url: string) => {
-      if (url.startsWith(urlFor(year))) {
-        mainCalls++
-        if (mainCalls === 1) {
-          return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
-        }
+      if (url.startsWith(urlFor(year)) && ++mainCalls === 1) {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
       }
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
     })
+    render(<RewindPage />)
+    const button = await screen.findByRole('button', { name: 'Try again' })
+    button.focus()
+
+    fireEvent.click(button)
+    await screen.findByTestId('prologue')
+
+    await waitFor(() => expect(screen.getByRole('main')).toHaveFocus())
+  })
+
+  it('It does not move focus to the story on a first load that succeeds', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+    render(<RewindPage />)
+
+    await screen.findByTestId('prologue')
+
+    expect(screen.getByRole('main')).not.toHaveFocus()
+  })
+
+  it('It starts the comparison prefetch after a successful retry', async () => {
+    // The first request is always the selected year, so failing it once fails the initial load
+    global.fetch = vi.fn()
+      .mockResolvedValueOnce(failing500())
+      .mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
     render(<RewindPage />)
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
     await screen.findByTestId('prologue')
@@ -696,47 +702,47 @@ describe('RewindPage retry flow regressions', () => {
     await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-disabled', 'false'))
   }
 
-  it('It changes the live region text when a second consecutive retry fails', async () => {
+  it('It announces attempt 2 when a second consecutive retry fails', async () => {
     global.fetch = vi.fn().mockResolvedValue(failing500())
     render(<RewindPage />)
     await screen.findByRole('button', { name: 'Try again' })
     await retryUntilSettled(2)
-    const afterFirstFailedRetry = screen.getByRole('status').textContent
 
     await retryUntilSettled(3)
 
-    expect(screen.getByRole('status').textContent).not.toBe(afterFirstFailedRetry)
+    expect(screen.getByRole('status').textContent).toBe("Still couldn't load your GitHub data (attempt 2). Try again in a moment.")
   })
 
-  it('It changes the live region text again when a third consecutive retry fails', async () => {
+  it('It announces attempt 3 when a third consecutive retry fails', async () => {
     global.fetch = vi.fn().mockResolvedValue(failing500())
     render(<RewindPage />)
     await screen.findByRole('button', { name: 'Try again' })
     await retryUntilSettled(2)
     await retryUntilSettled(3)
-    const afterSecondFailedRetry = screen.getByRole('status').textContent
 
     await retryUntilSettled(4)
 
-    expect(screen.getByRole('status').textContent).not.toBe(afterSecondFailedRetry)
+    expect(screen.getByRole('status').textContent).toBe("Still couldn't load your GitHub data (attempt 3). Try again in a moment.")
   })
 
   it('It recovers on retry after a processing error caused by a corrupt cached previous year', async () => {
     const store = new Map<number, unknown>()
     store.set(year - 1, { corrupt: true })
-    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => store.get(y) ?? null) as typeof getCached)
-    vi.mocked(setCache).mockImplementation(((_ns: string, y: number, data: unknown) => {
+    vi.mocked(getCached).mockImplementation(fakeGetCached(y => store.get(y)))
+    vi.mocked(setCache).mockImplementation((_ns: string, y: number, data: unknown) => {
       store.set(y, data)
-    }) as typeof setCache)
-    vi.mocked(clearCacheForYear).mockImplementation(((_ns: string, y: number) => {
+    })
+    vi.mocked(clearCacheForYear).mockImplementation((_ns: string, y: number) => {
       store.delete(y)
-    }) as typeof clearCacheForYear)
-    vi.mocked(compareYears).mockImplementation(((_current: unknown, previous: { rhythm?: unknown }) => {
-      if (!previous.rhythm) {
+    })
+    // Data-dependent on purpose: the retry only recovers if the corrupt entry was actually evicted
+    vi.mocked(compareYears).mockImplementation((_current: YearStats, previous: YearStats): YearComparison => {
+      // The type says rhythm is always present; the corrupt cache entry says otherwise at runtime.
+      if (!('rhythm' in previous)) {
         throw new TypeError("Cannot read properties of undefined (reading 'activeDays')")
       }
-      return { narrativeInsights: [] }
-    }) as unknown as typeof compareYears)
+      return emptyComparison
+    })
     global.fetch = vi.fn().mockImplementation((url: string) => {
       const y = Number(new URL(url, 'http://x').searchParams.get('year'))
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
@@ -744,17 +750,17 @@ describe('RewindPage retry flow regressions', () => {
     render(<RewindPage />)
     fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
 
-    expect(await screen.findByTestId('prologue', {}, { timeout: 1000 })).toBeInTheDocument()
+    expect(await screen.findByTestId('prologue')).toBeInTheDocument()
   })
 
   it.each([
     ['the selected year', year],
     ['the previous year', year - 1],
   ])('It clears the cached stats for %s after a processing error', async (_name, clearedYear) => {
-    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? { corrupt: true } : null)) as typeof getCached)
-    vi.mocked(compareYears).mockImplementation((() => {
+    vi.mocked(getCached).mockImplementation(fakeGetCached(y => (y === year - 1 ? { corrupt: true } : null)))
+    vi.mocked(compareYears).mockImplementation(() => {
       throw new TypeError('poisoned cache entry')
-    }) as unknown as typeof compareYears)
+    })
     global.fetch = vi.fn().mockImplementation((url: string) => {
       const y = Number(new URL(url, 'http://x').searchParams.get('year'))
       return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })

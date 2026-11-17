@@ -35,15 +35,31 @@ function getLocalDate(): string {
   return `${year}-${month}-${day}`
 }
 
-type FetchYearResult =
-  | { ok: true; stats: YearStats }
-  | { ok: false; kind: 'network' | 'http' | 'invalid-body'; status?: number }
+type FetchError =
+  | { ok: false; kind: 'http'; status: number }
+  | { ok: false; kind: 'network' | 'invalid-body' }
 
-type FetchError = Extract<FetchYearResult, { ok: false }>
+type FetchYearResult = { ok: true; stats: YearStats } | FetchError
 
-type LoadErrorKind = FetchError['kind'] | 'processing'
+type LoadError = FetchError | { ok: false; kind: 'processing' }
 
-type LoadError = { kind: LoadErrorKind; status?: number }
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value)
+}
+
+/**
+ * Shallow structural check on the /api/stats body. It rejects bodies that are
+ * not stats at all (null, primitives, arrays, error payloads) before they are
+ * cached; deeper corruption surfaces as a 'processing' error.
+ */
+function isYearStats(value: unknown): value is YearStats {
+  return (
+    isRecord(value) &&
+    typeof value.year === 'number' &&
+    isRecord(value.user) &&
+    isRecord(value.rhythm)
+  )
+}
 
 const LOAD_ERROR_MESSAGE = "We couldn't load your GitHub data. This is usually temporary."
 
@@ -63,6 +79,8 @@ export default function RewindPage() {
   const [retrying, setRetrying] = useState(false)
   const [failedRetries, setFailedRetries] = useState(0)
   const retryInFlightRef = useRef(false)
+  // The focused Try again button unmounts when a retry succeeds; move focus to the story
+  const focusStoryAfterRetryRef = useRef(false)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
   const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
@@ -140,8 +158,8 @@ export default function RewindPage() {
     }
 
     try {
-      const data: YearStats | null = await response.json()
-      if (typeof data !== 'object' || data === null) {
+      const data: unknown = await response.json()
+      if (!isYearStats(data)) {
         return { ok: false, kind: 'invalid-body' }
       }
       setCache('stats', year, data)
@@ -224,7 +242,7 @@ export default function RewindPage() {
               setComparisonLoading(false)
             }
           })
-          .catch(error => {
+          .catch((error: unknown) => {
             // Handle promise rejection to prevent unhandled rejection errors
             comparisonLogger.error(`Failed to fetch ${otherYear}:`, error)
             setLoadingYears(prev => {
@@ -243,7 +261,7 @@ export default function RewindPage() {
 
   const applyFetchResult = useCallback((year: number, result: FetchYearResult): LoadError | null => {
     if (!result.ok) {
-      return { kind: result.kind, status: result.status }
+      return result
     }
     try {
       showLoadedStats(year, result.stats)
@@ -253,7 +271,7 @@ export default function RewindPage() {
       // A poisoned cache entry would fail again on every retry, so force a refetch
       clearCacheForYear('stats', year)
       clearCacheForYear('stats', year - 1)
-      return { kind: 'processing' }
+      return { ok: false, kind: 'processing' }
     }
   }, [showLoadedStats])
 
@@ -284,6 +302,7 @@ export default function RewindPage() {
       const loadError = applyFetchResult(selectedYear, result)
       setError(loadError)
       setFailedRetries(count => (loadError === null ? 0 : count + 1))
+      focusStoryAfterRetryRef.current = loadError === null
     } finally {
       retryInFlightRef.current = false
       setRetrying(false)
@@ -301,6 +320,13 @@ export default function RewindPage() {
   useEffect(() => {
     fetchStats(selectedYear)
   }, [selectedYear, fetchStats])
+
+  useEffect(() => {
+    if (error === null && focusStoryAfterRetryRef.current) {
+      focusStoryAfterRetryRef.current = false
+      mainRef.current?.focus()
+    }
+  }, [error])
 
   // Compute activity level based on stats
   const activityLevel = useMemo(() => {
@@ -415,7 +441,7 @@ export default function RewindPage() {
     : null
 
   return (
-    <main id="main-content" ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-proximity md:snap-mandatory">
+    <main id="main-content" ref={mainRef} tabIndex={-1} className="relative h-screen overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0 snap-y snap-proximity md:snap-mandatory">
       {/* Year selector */}
       <div className="fixed top-2 left-4 z-50 flex items-center gap-2">
         <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
