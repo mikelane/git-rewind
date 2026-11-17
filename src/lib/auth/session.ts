@@ -41,8 +41,9 @@ async function decryptToken(encryptedToken: string): Promise<string | null> {
     const { payload } = await jwtDecrypt(encryptedToken, key, {
       keyManagementAlgorithms: ['dir'],
       contentEncryptionAlgorithms: ['A256GCM'],
+      requiredClaims: ['exp'],
     })
-    return (payload.token as string) || null
+    return typeof payload.token === 'string' && payload.token !== '' ? payload.token : null
   } catch {
     return null
   }
