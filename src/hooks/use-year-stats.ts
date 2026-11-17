@@ -1,8 +1,9 @@
 import { useEffect, useRef, useState, useCallback, type RefObject } from 'react'
 import type { YearStats } from '@/lib/github'
 import { getCached, setCache, clearCacheForYear } from '@/lib/cache'
-import { compareYears, type YearComparison } from '@/lib/comparisons'
+import type { YearComparison } from '@/lib/comparisons'
 import { comparisonLogger } from '@/lib/logger'
+import { AVAILABLE_YEARS, useYearPrefetch } from './use-year-prefetch'
 import {
   LOGIN_PATH,
   getLocalDate,
@@ -13,7 +14,7 @@ import {
 } from '@/lib/year-stats-fetch'
 
 const CURRENT_YEAR = new Date().getFullYear()
-export const AVAILABLE_YEARS: readonly number[] = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
+export { AVAILABLE_YEARS }
 
 export interface UseYearStatsResult {
   stats: YearStats | null
@@ -38,8 +39,6 @@ export interface UseYearStatsResult {
  */
 export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResult {
   const [stats, setStats] = useState<YearStats | null>(null)
-  const [comparison, setComparison] = useState<YearComparison | null>(null)
-  const [comparisonLoading, setComparisonLoading] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<LoadError | null>(null)
   const [retrying, setRetrying] = useState(false)
@@ -60,7 +59,6 @@ export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResu
   // The focused Try again button unmounts when a retry succeeds; move focus to the story
   const focusStoryAfterRetryRef = useRef(false)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
-  const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
   const [refreshing, setRefreshing] = useState(false)
   // Populated only after mount so the first client render matches the server render
   const [cachedYears, setCachedYears] = useState<Set<number>>(new Set())
@@ -121,100 +119,16 @@ export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResu
     }
   }, [syncCachedYears])
 
-  // Compute comparison for current stats against previous year (if available)
-  const computeComparison = useCallback((currentStats: YearStats, year: number) => {
-    // Race condition prevention: Don't update comparison if user has switched years
-    if (currentYearRef.current !== year) {
-      comparisonLogger.debug(`Skipping comparison for ${year} - user switched to ${currentYearRef.current}`)
-      return
-    }
-
-    const previousYear = year - 1
-    const cachedPrevious = getCached<YearStats>('stats', previousYear)
-
-    if (cachedPrevious) {
-      comparisonLogger.debug(`Computing ${year} vs ${previousYear}`)
-      const yearComparison = compareYears(currentStats, cachedPrevious)
-      comparisonLogger.debug('Insights:', yearComparison.narrativeInsights)
-      setComparison(yearComparison)
-    } else {
-      comparisonLogger.debug(`Previous year ${previousYear} not cached yet`)
-      setComparison(null)
-    }
-  }, [])
+  const { comparison, comparisonLoading, loadingYears, resetComparison, prefetchOtherYears } = useYearPrefetch({
+    fetchYearStats,
+    currentYearRef,
+    mountedRef,
+  })
 
   const showLoadedStats = useCallback((year: number, currentStats: YearStats) => {
     setStats(currentStats)
-
-    // Check if previous year is already cached
-    const previousYear = year - 1
-    const cachedPrevious = getCached<YearStats>('stats', previousYear)
-
-    if (cachedPrevious) {
-      // Previous year cached - compute comparison immediately
-      computeComparison(currentStats, year)
-    } else if (AVAILABLE_YEARS.includes(previousYear)) {
-      // Previous year not cached but fetchable - show loading state while the prefetch loads it
-      setComparisonLoading(true)
-    }
-
-    // Background fetch: load other years for future comparisons
-    // This populates the cache so switching years is instant
-    const otherYears = AVAILABLE_YEARS.filter(y => y !== year)
-    otherYears.forEach(otherYear => {
-      // Check if already cached before fetching
-      if (!getCached<YearStats>('stats', otherYear)) {
-        comparisonLogger.debug(`Background fetching ${otherYear}`)
-        setLoadingYears(prev => new Set([...Array.from(prev), otherYear]))
-        fetchYearStats(otherYear)
-          .then(otherResult => {
-            if (!mountedRef.current) {
-              return
-            }
-            setLoadingYears(prev => {
-              const next = new Set(prev)
-              next.delete(otherYear)
-              return next
-            })
-
-            // RACE CONDITION FIX: Check if user is still viewing the same year
-            // before updating comparison. If user switched years while background
-            // fetch was in progress, skip the comparison update.
-            const stillOnSameYear = currentYearRef.current === year
-
-            if (otherResult.ok) {
-              comparisonLogger.debug(`Cached ${otherYear}`)
-              // If the background fetch completed the previous year, update comparison
-              // Only if user is still on the same year (race condition prevention)
-              if (otherYear === year - 1 && stillOnSameYear) {
-                // Re-compute comparison now that previous year is available
-                setComparisonLoading(false)
-                computeComparison(currentStats, year)
-              }
-            } else if (otherYear === year - 1 && stillOnSameYear) {
-              // Failed to fetch previous year - stop showing loading
-              setComparisonLoading(false)
-            }
-          })
-          .catch((error: unknown) => {
-            // Handle promise rejection to prevent unhandled rejection errors
-            comparisonLogger.error(`Failed to fetch ${otherYear}:`, error)
-            if (!mountedRef.current) {
-              return
-            }
-            setLoadingYears(prev => {
-              const next = new Set(prev)
-              next.delete(otherYear)
-              return next
-            })
-            // If this was the previous year, stop showing comparison loading
-            if (otherYear === year - 1 && currentYearRef.current === year) {
-              setComparisonLoading(false)
-            }
-          })
-      }
-    })
-  }, [fetchYearStats, computeComparison])
+    prefetchOtherYears(year, currentStats)
+  }, [prefetchOtherYears])
 
   const applyFetchResult = useCallback((year: number, result: FetchYearResult): LoadError | null => {
     if (!result.ok) {
@@ -251,8 +165,7 @@ export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResu
     setLoading(true)
     setError(null)
     setFailedRetries(0)
-    setComparison(null)
-    setComparisonLoading(false)
+    resetComparison()
 
     try {
       // Fetch the selected year
@@ -267,7 +180,7 @@ export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResu
         setLoading(false)
       }
     }
-  }, [fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest, redirectIfUnauthorized])
+  }, [fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest, redirectIfUnauthorized, resetComparison])
 
   const handleRetry = useCallback(async () => {
     if (retryInFlightRef.current) {
