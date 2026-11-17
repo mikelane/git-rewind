@@ -25,7 +25,7 @@ const config: Config = {
         text: {
           primary: '#FAFAFA',
           secondary: '#A1A1AA',
-          tertiary: '#71717A',
+          tertiary: '#83838C',
           inverse: '#0C0C0E',
         },
         // Accent - Warm Amber
