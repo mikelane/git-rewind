@@ -28,8 +28,10 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const numberFormatter = new Intl.NumberFormat('en-US')
+
 export function formatNumber(num: number): string {
-  return new Intl.NumberFormat('en-US').format(num)
+  return numberFormatter.format(num)
 }
 
 export function formatPercentage(value: number, total: number): number {

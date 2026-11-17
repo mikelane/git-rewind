@@ -179,7 +179,8 @@ export class GitHubClient {
     excludeRepos: string[]
   ): Promise<PrivateRepoStats> {
     const privateRepos = await this.getPrivateRepos(year)
-    const reposToQuery = privateRepos.filter(r => !excludeRepos.includes(r.full_name))
+    const excluded = new Set(excludeRepos)
+    const reposToQuery = privateRepos.filter(r => !excluded.has(r.full_name))
 
     githubLogger.debug(`Found ${privateRepos.length} private repos with activity in ${year}, querying ${reposToQuery.length} not in GraphQL results`)
     githubLogger.debug('Active private repos:', privateRepos.map(r => r.full_name))

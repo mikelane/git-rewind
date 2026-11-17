@@ -1,4 +1,5 @@
 import { Suspense } from 'react'
+import Link from 'next/link'
 import { cn } from '@/lib/utils'
 import { ErrorMessage } from '@/components/error-message'
 import {
@@ -120,9 +121,9 @@ export default function LandingPage() {
       >
         <span>Already installed? Just view your rewind.</span>
         <span className="hidden sm:inline text-border-subtle">•</span>
-        <a href="/demo" className="text-accent hover:underline underline-offset-2">
+        <Link href="/demo" className="text-accent hover:underline underline-offset-2">
           Or see a demo first
-        </a>
+        </Link>
       </div>
 
       {/* Trust indicators - below CTAs as proof */}
