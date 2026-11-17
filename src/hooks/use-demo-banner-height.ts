@@ -10,7 +10,7 @@ const BANNER_HEIGHT_PROPERTY = '--demo-banner-h'
  * can sit below it. Browsers without ResizeObserver get a single measurement.
  * The property is removed on unmount.
  */
-export function useDemoBannerHeight(bannerRef: RefObject<HTMLElement | null>) {
+export function useDemoBannerHeight(bannerRef: RefObject<HTMLElement | null>): void {
   useEffect(() => {
     const banner = bannerRef.current
     if (!banner) {
@@ -26,8 +26,8 @@ export function useDemoBannerHeight(bannerRef: RefObject<HTMLElement | null>) {
       return () => root.style.removeProperty(BANNER_HEIGHT_PROPERTY)
     }
 
-    const observer = new ResizeObserver(([entry]) => {
-      publishHeight((entry.target as HTMLElement).offsetHeight)
+    const observer = new ResizeObserver(() => {
+      publishHeight(banner.offsetHeight)
     })
     observer.observe(banner)
 

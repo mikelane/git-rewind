@@ -9,17 +9,21 @@ vi.mock('@/hooks', async importOriginal => ({
 }))
 
 function getMostCollaboratedSection(): HTMLElement {
-  return screen.getByText('Most Collaborated With').parentElement as HTMLElement
+  const section = screen.getByText('Most Collaborated With').parentElement
+  if (section === null) {
+    throw new Error('Expected the collaboration heading to have a parent element')
+  }
+  return section
 }
 
 describe('DemoExperience collaboration chapter', () => {
-  it('renders mona as a collaborator', () => {
+  it('It renders mona as a collaborator', () => {
     render(<DemoExperience year={2026} />)
 
-    expect(screen.getByText('@mona')).toBeTruthy()
+    expect(screen.getByText('@mona')).toBeInTheDocument()
   })
 
-  it('renders mona as the hero collaborator with 47 interactions', () => {
+  it('It renders mona as the hero collaborator with 47 interactions', () => {
     render(<DemoExperience year={2026} />)
     const section = getMostCollaboratedSection()
 
@@ -41,7 +45,7 @@ describe('DemoExperience collaboration chapter', () => {
     expect(handleSpan.nextElementSibling?.textContent).toBe(count)
   })
 
-  it('renders exactly 4 collaborator chips besides the hero', () => {
+  it('It renders exactly 4 collaborator chips besides the hero', () => {
     render(<DemoExperience year={2026} />)
     const section = getMostCollaboratedSection()
 
@@ -50,7 +54,7 @@ describe('DemoExperience collaboration chapter', () => {
   })
 
   it.each(['@hubot', '@dependabot', '@github-actions', '@renovate'])(
-    'does not render %s',
+    'It does not render %s',
     bot => {
       render(<DemoExperience year={2026} />)
 
@@ -58,7 +62,7 @@ describe('DemoExperience collaboration chapter', () => {
     }
   )
 
-  it('renders the unique collaborator count of 19', () => {
+  it('It renders the unique collaborator count of 19', () => {
     render(<DemoExperience year={2026} />)
 
     const callout = screen.getByText(/different people this year/)
@@ -67,7 +71,7 @@ describe('DemoExperience collaboration chapter', () => {
 })
 
 describe('DemoExperience conversion call to action', () => {
-  it('renders a "Get your own Rewind" link to the install URL', () => {
+  it('It renders a "Get your own Rewind" link to the install URL', () => {
     vi.stubEnv('NEXT_PUBLIC_GITHUB_APP_SLUG', 'my-rewind')
     render(<DemoExperience year={2026} />)
 
@@ -78,13 +82,13 @@ describe('DemoExperience conversion call to action', () => {
     vi.unstubAllEnvs()
   })
 
-  it('renders no "Save Your Rewind" button', () => {
+  it('It renders no "Save Your Rewind" button', () => {
     render(<DemoExperience year={2026} />)
 
     expect(screen.queryByText('Save Your Rewind')).toBeNull()
   })
 
-  it('renders no share button anywhere in the demo', () => {
+  it('It renders no share button anywhere in the demo', () => {
     render(<DemoExperience year={2026} />)
 
     expect(screen.queryAllByRole('button', { name: /share/i })).toHaveLength(0)
@@ -95,31 +99,37 @@ describe('DemoExperience mobile scrolling', () => {
   const getMain = () => screen.getByRole('main')
   const getChapterWrappers = () => Array.from(getMain().querySelectorAll(':scope > .snap-start'))
 
-  it('renders the story with proximity snapping on phones and mandatory snapping from md', () => {
+  it('It renders the story with proximity snapping on phones and mandatory snapping from md', () => {
     render(<DemoExperience year={2026} />)
 
     expect(getMain()).toHaveClass('snap-proximity', 'md:snap-mandatory')
     expect(getMain()).not.toHaveClass('snap-mandatory')
   })
 
-  it('renders six chapter wrappers that only force snap stops from md', () => {
+  it('It renders six chapter wrappers', () => {
     render(<DemoExperience year={2026} />)
 
-    const wrappers = getChapterWrappers()
-    expect(wrappers).toHaveLength(6)
-    wrappers.forEach(wrapper => {
-      expect(wrapper).toHaveClass('md:snap-always')
-      expect(wrapper).not.toHaveClass('snap-always')
-    })
+    expect(getChapterWrappers()).toHaveLength(6)
   })
 
-  it('renders the scroll container with scroll padding for the banner height', () => {
+  it.each([0, 1, 2, 3, 4, 5])(
+    'It renders chapter wrapper %i so it only forces a snap stop from md',
+    index => {
+      render(<DemoExperience year={2026} />)
+
+      const wrapper = getChapterWrappers()[index]
+      expect(wrapper).toHaveClass('md:snap-always')
+      expect(wrapper).not.toHaveClass('snap-always')
+    }
+  )
+
+  it('It renders the scroll container with scroll padding for the banner height', () => {
     render(<DemoExperience year={2026} />)
 
     expect(getMain().style.scrollPaddingTop).toBe('var(--demo-banner-h, 0px)')
   })
 
-  it('renders the prologue wrapper offset by the banner height instead of pt-10', () => {
+  it('It renders the prologue wrapper offset by the banner height instead of pt-10', () => {
     render(<DemoExperience year={2026} />)
 
     const prologue = getChapterWrappers()[0]
@@ -127,7 +137,7 @@ describe('DemoExperience mobile scrolling', () => {
     expect(prologue).toHaveClass('pt-[var(--demo-banner-h,0px)]')
   })
 
-  it('renders the mobile progress bar below the demo banner', () => {
+  it('It renders the mobile progress bar below the demo banner', () => {
     render(<DemoExperience year={2026} />)
 
     expect(screen.getByRole('progressbar').style.top).toBe('var(--demo-banner-h, 0px)')

@@ -3,7 +3,13 @@ import { render, screen } from '@testing-library/react'
 import { MobileProgressBar } from './mobile-progress-bar'
 import { ProgressIndicator } from './progress-indicator'
 
-const getFill = () => screen.getByRole('progressbar').firstElementChild as HTMLElement
+const getFill = (): HTMLElement => {
+  const fill = screen.getByRole('progressbar').firstElementChild
+  if (!(fill instanceof HTMLElement)) {
+    throw new Error('Expected the progressbar to contain a fill element')
+  }
+  return fill
+}
 
 describe('MobileProgressBar', () => {
   it.each([

@@ -40,7 +40,7 @@ export function useKeyboardNavigation({
   chapterRefs,
   currentChapter,
   enabled = true,
-}: UseKeyboardNavigationOptions) {
+}: UseKeyboardNavigationOptions): void {
   const scrollToChapter = useCallback((index: number) => {
     const clampedIndex = Math.max(0, Math.min(index, chapterRefs.length - 1))
     chapterRefs[clampedIndex]?.current?.scrollIntoView({ behavior: 'smooth' })

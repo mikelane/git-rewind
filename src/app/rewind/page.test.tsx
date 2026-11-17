@@ -91,7 +91,7 @@ describe('RewindPage', () => {
   describe('tap targets', () => {
     const currentYear = new Date().getFullYear()
 
-    it.each(['min-h-11', 'min-w-11'])('renders the year selector button with %s', async (utility) => {
+    it.each(['min-h-11', 'min-w-11'])('It renders the year selector button with %s', async (utility) => {
       render(<RewindPage />)
 
       const yearButton = await screen.findByRole('button', { name: new RegExp(`View ${currentYear}`) })
@@ -99,7 +99,7 @@ describe('RewindPage', () => {
       expect(yearButton).toHaveClass(utility)
     })
 
-    it.each(['min-h-11', 'min-w-11'])('renders the refresh button with %s', async (utility) => {
+    it.each(['min-h-11', 'min-w-11'])('It renders the refresh button with %s', async (utility) => {
       render(<RewindPage />)
 
       const refreshButton = await screen.findByRole('button', { name: 'Refresh stats' })
@@ -115,23 +115,29 @@ describe('RewindPage', () => {
       return prologue.parentElement?.parentElement as HTMLElement
     }
 
-    it('renders the story with proximity snapping on phones and mandatory snapping from md', async () => {
+    it('It renders the story with proximity snapping on phones and mandatory snapping from md', async () => {
       const main = await renderLoadedStory()
 
       expect(main).toHaveClass('snap-proximity', 'md:snap-mandatory')
       expect(main).not.toHaveClass('snap-mandatory')
     })
 
-    it('renders six chapter wrappers that only force snap stops from md', async () => {
+    it('It renders six chapter wrappers', async () => {
       const main = await renderLoadedStory()
 
-      const wrappers = Array.from(main.querySelectorAll(':scope > .snap-start'))
-      expect(wrappers).toHaveLength(6)
-      wrappers.forEach(wrapper => {
+      expect(main.querySelectorAll(':scope > .snap-start')).toHaveLength(6)
+    })
+
+    it.each([0, 1, 2, 3, 4, 5])(
+      'It renders chapter wrapper %i so it only forces a snap stop from md',
+      async index => {
+        const main = await renderLoadedStory()
+
+        const wrapper = main.querySelectorAll(':scope > .snap-start')[index]
         expect(wrapper).toHaveClass('md:snap-always')
         expect(wrapper).not.toHaveClass('snap-always')
-      })
-    })
+      }
+    )
   })
 
   describe('year pill cached styling', () => {
@@ -141,7 +147,7 @@ describe('RewindPage', () => {
     const pillFor = (year: number) =>
       screen.getByRole('button', { name: new RegExp(`View ${year}`) }).firstElementChild
 
-    it('renders the uncached pill styling on the server render even when the cache holds the year', () => {
+    it('It renders the uncached pill styling on the server render even when the cache holds the year', () => {
       vi.mocked(getCached).mockReturnValue({ year: previousYear } as never)
 
       const html = renderToString(<RewindPage />)
@@ -149,14 +155,14 @@ describe('RewindPage', () => {
       expect(html).not.toContain('bg-bg-surface text-text-secondary')
     })
 
-    it('renders the uncached pill styling when the cache is empty', async () => {
+    it('It renders the uncached pill styling when the cache is empty', async () => {
       render(<RewindPage />)
       await screen.findByRole('button', { name: 'Refresh stats' })
 
       expect(pillFor(previousYear)).toHaveClass(uncachedPillClass)
     })
 
-    it('shows cached pill styling after mount when the cache holds the year', async () => {
+    it('It shows cached pill styling after mount when the cache holds the year', async () => {
       vi.mocked(getCached).mockImplementation(((_: string, year: number) =>
         year === previousYear ? { year } : null) as never)
 
@@ -166,7 +172,7 @@ describe('RewindPage', () => {
       await waitFor(() => expect(pillFor(previousYear)).toHaveClass(cachedPillClass))
     })
 
-    it('shows cached pill styling once a background fetch caches the year', async () => {
+    it('It shows cached pill styling once a background fetch caches the year', async () => {
       const cachedYears = new Set<number>()
       vi.mocked(getCached).mockImplementation(((_: string, year: number) =>
         cachedYears.has(year) ? { year } : null) as never)
@@ -181,7 +187,7 @@ describe('RewindPage', () => {
   })
 
   describe('Bug #5: Unhandled promise rejection in background fetch', () => {
-    it('handles fetch rejection gracefully without unhandled promise rejection', async () => {
+    it('It handles fetch rejection gracefully without unhandled promise rejection', async () => {
       // First call succeeds (current year)
       // Second call rejects (background fetch of other year)
       let callCount = 0
@@ -222,7 +228,7 @@ describe('RewindPage', () => {
       expect(unhandledRejection).toBeNull()
     })
 
-    it('clears loading state even when background fetch fails', async () => {
+    it('It clears loading state even when background fetch fails', async () => {
       let callCount = 0
       global.fetch = vi.fn().mockImplementation(() => {
         callCount++

@@ -29,6 +29,14 @@ function Harness({ currentChapter = 1 }: { currentChapter?: number }) {
 const pressOn = (target: Element, key: string, init: KeyboardEventInit = {}) =>
   fireEvent.keyDown(target, { key, ...init })
 
+const queryTarget = (container: HTMLElement, selector: string): Element => {
+  const target = container.querySelector(selector)
+  if (target === null) {
+    throw new Error(`No element matches ${selector}`)
+  }
+  return target
+}
+
 const scrolledChapters = () => scrollSpies.filter((spy) => spy.mock.calls.length > 0).length
 
 beforeEach(() => {
@@ -90,7 +98,7 @@ describe('useKeyboardNavigation', () => {
     ['a', 'Enter'],
   ])('It yields %s key %j to the focused control', (selector, key) => {
     const { container } = renderHarness(1)
-    const target = container.querySelector(selector) as Element
+    const target = queryTarget(container, selector)
     const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
 
     target.dispatchEvent(event)
@@ -140,7 +148,7 @@ describe('useKeyboardNavigation', () => {
     ['contenteditable', '[data-testid="editable"]'],
   ])('It yields ArrowDown from a focused %s', (_label, selector) => {
     const { container } = renderHarness(1)
-    const target = container.querySelector(selector) as Element
+    const target = queryTarget(container, selector)
     const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
 
     target.dispatchEvent(event)
@@ -154,7 +162,7 @@ describe('useKeyboardNavigation', () => {
     ['a child of a contenteditable element', '[data-testid="editable"] span'],
   ])('It yields ArrowDown from %s', (_label, selector) => {
     const { container } = renderHarness(1)
-    const target = container.querySelector(selector) as Element
+    const target = queryTarget(container, selector)
     const event = new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true })
 
     target.dispatchEvent(event)
