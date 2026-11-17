@@ -31,6 +31,12 @@ describe('ShareButton', () => {
     vi.clearAllMocks()
   })
 
+  it.each(['min-h-11', 'min-w-11'])('renders the compact variant with %s for a 44px tap target', (utility) => {
+    render(<ShareButton highlight={mockStreakHighlight} variant="compact" />)
+
+    expect(screen.getByRole('button')).toHaveClass(utility)
+  })
+
   it('renders share icon by default', () => {
     vi.mocked(shareHighlight).mockResolvedValue({ method: 'clipboard', success: true })
     render(<ShareButton highlight={mockStreakHighlight} />)

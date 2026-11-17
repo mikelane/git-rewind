@@ -30,6 +30,7 @@ vi.mock('@/hooks', () => ({
 vi.mock('@/lib/cache', () => ({
   getCached: vi.fn(() => null),
   setCache: vi.fn(),
+  clearCacheForYear: vi.fn(),
 }))
 
 vi.mock('@/lib/export', () => ({
@@ -51,6 +52,8 @@ vi.mock('@/lib/format-days', () => ({
   formatFavoriteDays: vi.fn(() => 'Monday'),
 }))
 
+import { renderToString } from 'react-dom/server'
+import { getCached, setCache } from '@/lib/cache'
 import RewindPage from './page'
 
 const originalFetch = global.fetch
@@ -58,6 +61,8 @@ const originalFetch = global.fetch
 describe('RewindPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    vi.mocked(getCached).mockImplementation(() => null)
+    vi.mocked(setCache).mockImplementation(() => {})
     unhandledRejection = null
     window.addEventListener('unhandledrejection', unhandledRejectionHandler)
 
@@ -81,6 +86,72 @@ describe('RewindPage', () => {
   afterEach(() => {
     window.removeEventListener('unhandledrejection', unhandledRejectionHandler)
     global.fetch = originalFetch
+  })
+
+  describe('tap targets', () => {
+    const currentYear = new Date().getFullYear()
+
+    it.each(['min-h-11', 'min-w-11'])('renders the year selector button with %s', async (utility) => {
+      render(<RewindPage />)
+
+      const yearButton = await screen.findByRole('button', { name: new RegExp(`View ${currentYear}`) })
+
+      expect(yearButton).toHaveClass(utility)
+    })
+
+    it.each(['min-h-11', 'min-w-11'])('renders the refresh button with %s', async (utility) => {
+      render(<RewindPage />)
+
+      const refreshButton = await screen.findByRole('button', { name: 'Refresh stats' })
+
+      expect(refreshButton).toHaveClass(utility)
+    })
+  })
+
+  describe('year pill cached styling', () => {
+    const previousYear = new Date().getFullYear() - 1
+    const cachedPillClass = 'text-text-secondary'
+    const uncachedPillClass = 'text-text-tertiary'
+    const pillFor = (year: number) =>
+      screen.getByRole('button', { name: new RegExp(`View ${year}`) }).firstElementChild
+
+    it('renders the uncached pill styling on the server render even when the cache holds the year', () => {
+      vi.mocked(getCached).mockReturnValue({ year: previousYear } as never)
+
+      const html = renderToString(<RewindPage />)
+
+      expect(html).not.toContain('bg-bg-surface text-text-secondary')
+    })
+
+    it('renders the uncached pill styling when the cache is empty', async () => {
+      render(<RewindPage />)
+      await screen.findByRole('button', { name: 'Refresh stats' })
+
+      expect(pillFor(previousYear)).toHaveClass(uncachedPillClass)
+    })
+
+    it('shows cached pill styling after mount when the cache holds the year', async () => {
+      vi.mocked(getCached).mockImplementation(((_: string, year: number) =>
+        year === previousYear ? { year } : null) as never)
+
+      render(<RewindPage />)
+      await screen.findByRole('button', { name: 'Refresh stats' })
+
+      await waitFor(() => expect(pillFor(previousYear)).toHaveClass(cachedPillClass))
+    })
+
+    it('shows cached pill styling once a background fetch caches the year', async () => {
+      const cachedYears = new Set<number>()
+      vi.mocked(getCached).mockImplementation(((_: string, year: number) =>
+        cachedYears.has(year) ? { year } : null) as never)
+      vi.mocked(setCache).mockImplementation(((_: string, year: number) => {
+        cachedYears.add(year)
+      }) as never)
+
+      render(<RewindPage />)
+
+      await waitFor(() => expect(pillFor(previousYear)).toHaveClass(cachedPillClass))
+    })
   })
 
   describe('Bug #5: Unhandled promise rejection in background fetch', () => {
