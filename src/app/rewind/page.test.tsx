@@ -977,4 +977,73 @@ describe('RewindPage fetch races', () => {
       expect(redirected()).toBe(false)
     })
   })
+  describe('after the page unmounts', () => {
+    it('It starts no background prefetch when the initial fetch resolves', async () => {
+      const { unmount } = render(<RewindPage />)
+      unmount()
+
+      await respond(selectedYear, 0, okFor(selectedYear))
+
+      expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(1)
+    })
+
+    it('It does not redirect when the initial fetch returns 401', async () => {
+      const { unmount } = render(<RewindPage />)
+      unmount()
+
+      await respond(selectedYear, 0, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+
+    it('It starts no background prefetch when an in-flight retry succeeds', async () => {
+      const { unmount } = render(<RewindPage />)
+      await respond(selectedYear, 0, httpStatus(500))
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+      unmount()
+
+      await respond(selectedYear, 1, okFor(selectedYear))
+
+      expect(vi.mocked(global.fetch)).toHaveBeenCalledTimes(2)
+    })
+
+    it('It does not redirect when an in-flight retry returns 401', async () => {
+      const { unmount } = render(<RewindPage />)
+      await respond(selectedYear, 0, httpStatus(500))
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+      unmount()
+
+      await respond(selectedYear, 1, httpStatus(401))
+
+      expect(redirected()).toBe(false)
+    })
+  })
+
+  describe('under StrictMode double effects', () => {
+    it('It still shows the story from the fetch that follows the remount', async () => {
+      render(<StrictMode><RewindPage /></StrictMode>)
+
+      await respond(selectedYear, staged.get(selectedYear)!.length - 1, okFor(selectedYear))
+
+      expect(shownYear()).toBe(String(selectedYear))
+    })
+
+    it('It still redirects when the selected year returns 401', async () => {
+      render(<StrictMode><RewindPage /></StrictMode>)
+
+      await respond(selectedYear, staged.get(selectedYear)!.length - 1, httpStatus(401))
+
+      expect(redirected()).toBe(true)
+    })
+
+    it('It still retries after the selected year fails', async () => {
+      render(<StrictMode><RewindPage /></StrictMode>)
+      await respond(selectedYear, staged.get(selectedYear)!.length - 1, httpStatus(500))
+
+      fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+      await respond(selectedYear, staged.get(selectedYear)!.length - 1, okFor(selectedYear))
+
+      expect(shownYear()).toBe(String(selectedYear))
+    })
+  })
 })

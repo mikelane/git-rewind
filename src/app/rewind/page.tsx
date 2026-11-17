@@ -87,6 +87,16 @@ export default function RewindPage() {
   const retryInFlightRef = useRef(false)
   // Only the most recently started selected-year request may write stats or error state
   const latestRequestRef = useRef(0)
+  const mountedRef = useRef(false)
+
+  // Set in the effect body, not only at init: StrictMode runs cleanup then setup again
+  useEffect(() => {
+    mountedRef.current = true
+    return () => {
+      mountedRef.current = false
+      latestRequestRef.current += 1
+    }
+  }, [])
   // The focused Try again button unmounts when a retry succeeds; move focus to the story
   const focusStoryAfterRetryRef = useRef(false)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
@@ -96,6 +106,9 @@ export default function RewindPage() {
   const [cachedYears, setCachedYears] = useState<Set<number>>(new Set())
 
   const syncCachedYears = useCallback(() => {
+    if (!mountedRef.current) {
+      return
+    }
     setCachedYears(new Set(AVAILABLE_YEARS.filter(year => getCached<YearStats>('stats', year))))
   }, [])
 
@@ -224,6 +237,9 @@ export default function RewindPage() {
         setLoadingYears(prev => new Set([...Array.from(prev), otherYear]))
         fetchYearStats(otherYear)
           .then(otherResult => {
+            if (!mountedRef.current) {
+              return
+            }
             setLoadingYears(prev => {
               const next = new Set(prev)
               next.delete(otherYear)
@@ -252,13 +268,16 @@ export default function RewindPage() {
           .catch((error: unknown) => {
             // Handle promise rejection to prevent unhandled rejection errors
             comparisonLogger.error(`Failed to fetch ${otherYear}:`, error)
+            if (!mountedRef.current) {
+              return
+            }
             setLoadingYears(prev => {
               const next = new Set(prev)
               next.delete(otherYear)
               return next
             })
             // If this was the previous year, stop showing comparison loading
-            if (otherYear === year - 1) {
+            if (otherYear === year - 1 && currentYearRef.current === year) {
               setComparisonLoading(false)
             }
           })
@@ -338,7 +357,9 @@ export default function RewindPage() {
       focusStoryAfterRetryRef.current = loadError === null
     } finally {
       retryInFlightRef.current = false
-      setRetrying(false)
+      if (mountedRef.current) {
+        setRetrying(false)
+      }
     }
   }, [selectedYear, fetchYearStats, applyFetchResult, startSelectedYearRequest, isLatestRequest, redirectIfUnauthorized])
 
@@ -347,7 +368,9 @@ export default function RewindPage() {
     clearCacheForYear('stats', selectedYear)
     syncCachedYears()
     await fetchStats(selectedYear)
-    setRefreshing(false)
+    if (mountedRef.current) {
+      setRefreshing(false)
+    }
   }, [selectedYear, fetchStats, syncCachedYears])
 
   useEffect(() => {
