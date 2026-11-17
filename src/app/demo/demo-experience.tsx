@@ -16,7 +16,7 @@ import {
 } from '@/components/chapters'
 import { ProgressIndicator } from '@/components/ui'
 import { getLanguageColor } from '@/lib/constants'
-import { useScrollProgress, useKeyboardNavigation } from '@/hooks'
+import { useScrollProgress, useKeyboardNavigation, useDemoBannerHeight } from '@/hooks'
 import { cn } from '@/lib/utils'
 
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
@@ -115,6 +115,7 @@ export function DemoExperience({ year }: { year: number }) {
 
   // Ref for the scroll container
   const mainRef = useRef<HTMLElement>(null)
+  const bannerRef = useRef<HTMLDivElement>(null)
 
   // Refs for each chapter section
   const prologueRef = useRef<HTMLDivElement>(null)
@@ -135,7 +136,9 @@ export function DemoExperience({ year }: { year: number }) {
 
   const { currentChapter } = useScrollProgress({ chapterRefs, containerRef: mainRef })
 
-  // Enable keyboard navigation (ArrowDown/Up, Space, PageDown/Up, Home/End)
+  useDemoBannerHeight(bannerRef)
+
+  // Enable keyboard navigation (ArrowDown/Up, PageDown/Up, Home/End)
   useKeyboardNavigation({ chapterRefs, currentChapter })
 
   const scrollToChapter = (index: number) => {
@@ -143,9 +146,14 @@ export function DemoExperience({ year }: { year: number }) {
   }
 
   return (
-    <main ref={mainRef} className="relative h-screen overflow-y-auto snap-y snap-mandatory">
+    <main
+      ref={mainRef}
+      className="relative h-screen overflow-y-auto snap-y snap-proximity md:snap-mandatory"
+      style={{ scrollPaddingTop: 'var(--demo-banner-h, 0px)' }}
+    >
       {/* Demo banner */}
       <div
+        ref={bannerRef}
         className={cn(
           'fixed top-0 left-0 right-0 z-50',
           'bg-accent/90 backdrop-blur-sm',
@@ -170,10 +178,11 @@ export function DemoExperience({ year }: { year: number }) {
         currentChapter={currentChapter}
         onChapterClick={scrollToChapter}
         chapterNames={CHAPTER_NAMES}
+        offsetTopVar="--demo-banner-h"
       />
 
       {/* Prologue */}
-      <div ref={prologueRef} className="snap-start snap-always pt-10">
+      <div ref={prologueRef} className="snap-start md:snap-always pt-[var(--demo-banner-h,0px)]">
         <PrologueChapter
           data={prologueData}
           onContinue={() => scrollToChapter(1)}
@@ -182,27 +191,27 @@ export function DemoExperience({ year }: { year: number }) {
       </div>
 
       {/* Chapter 1: The Rhythm */}
-      <div ref={rhythmRef} className="snap-start snap-always">
+      <div ref={rhythmRef} className="snap-start md:snap-always">
         <TheRhythmChapter data={rhythmData} isDemo />
       </div>
 
       {/* Chapter 2: Your Craft */}
-      <div ref={craftRef} className="snap-start snap-always">
+      <div ref={craftRef} className="snap-start md:snap-always">
         <YourCraftChapter data={craftData} isDemo />
       </div>
 
       {/* Chapter 3: The Collaboration */}
-      <div ref={collaborationRef} className="snap-start snap-always">
+      <div ref={collaborationRef} className="snap-start md:snap-always">
         <TheCollaborationChapter data={collaborationData} />
       </div>
 
       {/* Chapter 4: Peak Moments */}
-      <div ref={peakRef} className="snap-start snap-always">
+      <div ref={peakRef} className="snap-start md:snap-always">
         <PeakMomentsChapter data={peakMomentsData} isDemo />
       </div>
 
       {/* Epilogue */}
-      <div ref={epilogueRef} className="snap-start snap-always">
+      <div ref={epilogueRef} className="snap-start md:snap-always">
         <EpilogueChapter data={epilogueData} isDemo />
       </div>
     </main>

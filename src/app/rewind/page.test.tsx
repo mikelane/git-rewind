@@ -108,6 +108,32 @@ describe('RewindPage', () => {
     })
   })
 
+  describe('mobile scrolling', () => {
+    const renderLoadedStory = async () => {
+      render(<RewindPage />)
+      const prologue = await screen.findByTestId('prologue')
+      return prologue.parentElement?.parentElement as HTMLElement
+    }
+
+    it('renders the story with proximity snapping on phones and mandatory snapping from md', async () => {
+      const main = await renderLoadedStory()
+
+      expect(main).toHaveClass('snap-proximity', 'md:snap-mandatory')
+      expect(main).not.toHaveClass('snap-mandatory')
+    })
+
+    it('renders six chapter wrappers that only force snap stops from md', async () => {
+      const main = await renderLoadedStory()
+
+      const wrappers = Array.from(main.querySelectorAll(':scope > .snap-start'))
+      expect(wrappers).toHaveLength(6)
+      wrappers.forEach(wrapper => {
+        expect(wrapper).toHaveClass('md:snap-always')
+        expect(wrapper).not.toHaveClass('snap-always')
+      })
+    })
+  })
+
   describe('year pill cached styling', () => {
     const previousYear = new Date().getFullYear() - 1
     const cachedPillClass = 'text-text-secondary'

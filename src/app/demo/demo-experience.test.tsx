@@ -5,6 +5,7 @@ import { DemoExperience } from './demo-experience'
 vi.mock('@/hooks', () => ({
   useScrollProgress: () => ({ currentChapter: 0, scrollProgress: 0 }),
   useKeyboardNavigation: () => undefined,
+  useDemoBannerHeight: () => undefined,
 }))
 
 function getMostCollaboratedSection(): HTMLElement {
@@ -87,5 +88,48 @@ describe('DemoExperience conversion call to action', () => {
     render(<DemoExperience year={2026} />)
 
     expect(screen.queryAllByRole('button', { name: /share/i })).toHaveLength(0)
+  })
+})
+
+describe('DemoExperience mobile scrolling', () => {
+  const getMain = () => screen.getByRole('main')
+  const getChapterWrappers = () => Array.from(getMain().querySelectorAll(':scope > .snap-start'))
+
+  it('renders the story with proximity snapping on phones and mandatory snapping from md', () => {
+    render(<DemoExperience year={2026} />)
+
+    expect(getMain()).toHaveClass('snap-proximity', 'md:snap-mandatory')
+    expect(getMain()).not.toHaveClass('snap-mandatory')
+  })
+
+  it('renders six chapter wrappers that only force snap stops from md', () => {
+    render(<DemoExperience year={2026} />)
+
+    const wrappers = getChapterWrappers()
+    expect(wrappers).toHaveLength(6)
+    wrappers.forEach(wrapper => {
+      expect(wrapper).toHaveClass('md:snap-always')
+      expect(wrapper).not.toHaveClass('snap-always')
+    })
+  })
+
+  it('renders the scroll container with scroll padding for the banner height', () => {
+    render(<DemoExperience year={2026} />)
+
+    expect(getMain().style.scrollPaddingTop).toBe('var(--demo-banner-h, 0px)')
+  })
+
+  it('renders the prologue wrapper offset by the banner height instead of pt-10', () => {
+    render(<DemoExperience year={2026} />)
+
+    const prologue = getChapterWrappers()[0]
+    expect(prologue).not.toHaveClass('pt-10')
+    expect(prologue).toHaveClass('pt-[var(--demo-banner-h,0px)]')
+  })
+
+  it('renders the mobile progress bar below the demo banner', () => {
+    render(<DemoExperience year={2026} />)
+
+    expect(screen.getByRole('progressbar').style.top).toBe('var(--demo-banner-h, 0px)')
   })
 })
