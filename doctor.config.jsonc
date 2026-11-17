@@ -9,8 +9,9 @@
         "rules": ["react-doctor/no-vulnerable-react-server-components"]
       },
       {
-        // Intentional: the login route sets the short-lived OAuth CSRF state cookie, then redirects to
-        // GitHub. The cookie must be set in the same response as the redirect, so it cannot move to a POST.
+        // Intentional: sign-in starts from a plain link, so /api/auth/login is reached by a GET navigation.
+        // The route sets the short-lived OAuth CSRF state cookie on the same 302 redirect to GitHub, so the
+        // cookie and the redirect must share one response.
         "files": ["src/app/api/auth/login/route.ts"],
         "rules": ["react-doctor/nextjs-no-side-effect-in-get-handler"]
       },

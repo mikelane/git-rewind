@@ -29,7 +29,7 @@ describe('GitHub App fetch caching', () => {
   })
 
   it('does not cache the installation access token request', async () => {
-    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ token: 'ghs_token' }) })
+    fetchMock.mockResolvedValue({ ok: true, json: () => Promise.resolve({ token: 'test-installation-token' }) })
 
     await getInstallationToken(42)
 
