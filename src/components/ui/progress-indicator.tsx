@@ -1,6 +1,7 @@
 'use client'
 
 import { cn } from '@/lib/utils'
+import { MobileProgressBar } from './mobile-progress-bar'
 
 interface ProgressIndicatorProps {
   totalChapters: number
@@ -8,6 +9,8 @@ interface ProgressIndicatorProps {
   className?: string
   onChapterClick?: (index: number) => void
   chapterNames?: string[]
+  /** CSS custom property of a fixed banner the mobile bar sits below */
+  offsetTopVar?: string
 }
 
 export function ProgressIndicator({
@@ -16,9 +19,16 @@ export function ProgressIndicator({
   className,
   onChapterClick,
   chapterNames,
+  offsetTopVar,
 }: ProgressIndicatorProps) {
   return (
-    <nav
+    <>
+      <MobileProgressBar
+        currentChapter={currentChapter}
+        totalChapters={totalChapters}
+        offsetTopVar={offsetTopVar}
+      />
+      <nav
       className={cn(
         // right-1.5: the 44px step buttons keep the 8px dots where right-6 placed them
         'fixed right-1.5 top-1/2 -translate-y-1/2 z-40',
@@ -77,5 +87,6 @@ export function ProgressIndicator({
         </span>
       </div>
     </nav>
+    </>
   )
 }
