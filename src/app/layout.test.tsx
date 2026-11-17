@@ -32,6 +32,12 @@ describe('globals.css', () => {
   it('It does not import fonts from Google via CSS', () => {
     expect(globalsCss).not.toContain('fonts.googleapis.com')
   })
+
+  it.each(['left', 'right'])('It pads the body by the safe-area inset on the %s so landscape content clears the notch', (side) => {
+    const bodyRule = /body\s*\{[^}]*\}/.exec(globalsCss)?.[0] ?? ''
+
+    expect(bodyRule).toMatch(new RegExp(`padding-${side}:\\s*env\\(safe-area-inset-${side}\\)`))
+  })
 })
 
 describe('RootLayout viewport', () => {
