@@ -46,7 +46,11 @@ type LoadErrorKind = FetchError['kind'] | 'processing'
 type LoadError = { kind: LoadErrorKind; status?: number }
 
 const LOAD_ERROR_MESSAGE = "We couldn't load your GitHub data. This is usually temporary."
-const RETRY_FAILED_MESSAGE = "Still couldn't load your GitHub data. Try again in a moment."
+
+function retryFailedMessage(failedRetries: number): string {
+  const attemptLabel = failedRetries > 1 ? ` (attempt ${failedRetries})` : ''
+  return `Still couldn't load your GitHub data${attemptLabel}. Try again in a moment.`
+}
 
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
 
@@ -57,7 +61,7 @@ export default function RewindPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<LoadError | null>(null)
   const [retrying, setRetrying] = useState(false)
-  const [retryFailed, setRetryFailed] = useState(false)
+  const [failedRetries, setFailedRetries] = useState(0)
   const retryInFlightRef = useRef(false)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
   const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
@@ -246,6 +250,9 @@ export default function RewindPage() {
       return null
     } catch (processingError) {
       comparisonLogger.error(`Failed to process stats for ${year}:`, processingError)
+      // A poisoned cache entry would fail again on every retry, so force a refetch
+      clearCacheForYear('stats', year)
+      clearCacheForYear('stats', year - 1)
       return { kind: 'processing' }
     }
   }, [showLoadedStats])
@@ -253,7 +260,7 @@ export default function RewindPage() {
   const fetchStats = useCallback(async (year: number) => {
     setLoading(true)
     setError(null)
-    setRetryFailed(false)
+    setFailedRetries(0)
     setComparison(null)
     setComparisonLoading(false)
 
@@ -276,7 +283,7 @@ export default function RewindPage() {
       const result = await fetchYearStats(selectedYear)
       const loadError = applyFetchResult(selectedYear, result)
       setError(loadError)
-      setRetryFailed(loadError !== null)
+      setFailedRetries(count => (loadError === null ? 0 : count + 1))
     } finally {
       retryInFlightRef.current = false
       setRetrying(false)
@@ -313,7 +320,7 @@ export default function RewindPage() {
           Something went wrong
         </h1>
         <p role="status" className="text-body text-text-secondary mb-8 max-w-md">
-          {retryFailed ? RETRY_FAILED_MESSAGE : LOAD_ERROR_MESSAGE}
+          {failedRetries > 0 ? retryFailedMessage(failedRetries) : LOAD_ERROR_MESSAGE}
         </p>
         <button
           type="button"

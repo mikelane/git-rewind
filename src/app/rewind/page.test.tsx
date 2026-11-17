@@ -53,7 +53,7 @@ vi.mock('@/lib/format-days', () => ({
 }))
 
 import { renderToString } from 'react-dom/server'
-import { getCached, setCache } from '@/lib/cache'
+import { getCached, setCache, clearCacheForYear } from '@/lib/cache'
 import { compareYears } from '@/lib/comparisons'
 import RewindPage from './page'
 
@@ -687,5 +687,81 @@ describe('RewindPage retry flow regressions', () => {
     await screen.findByTestId('prologue')
 
     await waitFor(() => expect(callsFor(year - 1)).toHaveLength(1))
+  })
+
+  const failing500 = () => ({ ok: false, status: 500, json: () => Promise.resolve({}) })
+  const retryUntilSettled = async (expectedMainCalls: number) => {
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(callsFor(year)).toHaveLength(expectedMainCalls))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-disabled', 'false'))
+  }
+
+  it('It changes the live region text when a second consecutive retry fails', async () => {
+    global.fetch = vi.fn().mockResolvedValue(failing500())
+    render(<RewindPage />)
+    await screen.findByRole('button', { name: 'Try again' })
+    await retryUntilSettled(2)
+    const afterFirstFailedRetry = screen.getByRole('status').textContent
+
+    await retryUntilSettled(3)
+
+    expect(screen.getByRole('status').textContent).not.toBe(afterFirstFailedRetry)
+  })
+
+  it('It changes the live region text again when a third consecutive retry fails', async () => {
+    global.fetch = vi.fn().mockResolvedValue(failing500())
+    render(<RewindPage />)
+    await screen.findByRole('button', { name: 'Try again' })
+    await retryUntilSettled(2)
+    await retryUntilSettled(3)
+    const afterSecondFailedRetry = screen.getByRole('status').textContent
+
+    await retryUntilSettled(4)
+
+    expect(screen.getByRole('status').textContent).not.toBe(afterSecondFailedRetry)
+  })
+
+  it('It recovers on retry after a processing error caused by a corrupt cached previous year', async () => {
+    const store = new Map<number, unknown>()
+    store.set(year - 1, { corrupt: true })
+    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => store.get(y) ?? null) as typeof getCached)
+    vi.mocked(setCache).mockImplementation(((_ns: string, y: number, data: unknown) => {
+      store.set(y, data)
+    }) as typeof setCache)
+    vi.mocked(clearCacheForYear).mockImplementation(((_ns: string, y: number) => {
+      store.delete(y)
+    }) as typeof clearCacheForYear)
+    vi.mocked(compareYears).mockImplementation(((_current: unknown, previous: { rhythm?: unknown }) => {
+      if (!previous.rhythm) {
+        throw new TypeError("Cannot read properties of undefined (reading 'activeDays')")
+      }
+      return { narrativeInsights: [] }
+    }) as unknown as typeof compareYears)
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const y = Number(new URL(url, 'http://x').searchParams.get('year'))
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
+    })
+    render(<RewindPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+
+    expect(await screen.findByTestId('prologue', {}, { timeout: 1000 })).toBeInTheDocument()
+  })
+
+  it.each([
+    ['the selected year', year],
+    ['the previous year', year - 1],
+  ])('It clears the cached stats for %s after a processing error', async (_name, clearedYear) => {
+    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? { corrupt: true } : null)) as typeof getCached)
+    vi.mocked(compareYears).mockImplementation((() => {
+      throw new TypeError('poisoned cache entry')
+    }) as unknown as typeof compareYears)
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      const y = Number(new URL(url, 'http://x').searchParams.get('year'))
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
+    })
+    render(<RewindPage />)
+    await screen.findByRole('button', { name: 'Try again' })
+
+    expect(clearCacheForYear).toHaveBeenCalledWith('stats', clearedYear)
   })
 })
