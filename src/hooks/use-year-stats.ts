@@ -13,13 +13,30 @@ import {
 } from '@/lib/year-stats-fetch'
 
 const CURRENT_YEAR = new Date().getFullYear()
-export const AVAILABLE_YEARS = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
+export const AVAILABLE_YEARS: readonly number[] = [CURRENT_YEAR, CURRENT_YEAR - 1, CURRENT_YEAR - 2]
+
+export interface UseYearStatsResult {
+  stats: YearStats | null
+  comparison: YearComparison | null
+  comparisonLoading: boolean
+  loading: boolean
+  error: LoadError | null
+  retrying: boolean
+  failedRetries: number
+  selectedYear: number
+  setSelectedYear: (year: number) => void
+  loadingYears: ReadonlySet<number>
+  refreshing: boolean
+  cachedYears: ReadonlySet<number>
+  handleRetry: () => Promise<void>
+  handleRefresh: () => Promise<void>
+}
 
 /**
  * Loads, caches and compares the rewind stats for the selected year.
  * `storyRef` is the element that receives focus after a successful retry.
  */
-export function useYearStats(storyRef: RefObject<HTMLElement>) {
+export function useYearStats(storyRef: RefObject<HTMLElement>): UseYearStatsResult {
   const [stats, setStats] = useState<YearStats | null>(null)
   const [comparison, setComparison] = useState<YearComparison | null>(null)
   const [comparisonLoading, setComparisonLoading] = useState(false)

@@ -1,12 +1,12 @@
 import { cn } from '@/lib/utils'
 
 interface YearSelectorProps {
-  years: number[]
+  years: readonly number[]
   selectedYear: number
   loading: boolean
   refreshing: boolean
-  loadingYears: Set<number>
-  cachedYears: Set<number>
+  loadingYears: ReadonlySet<number>
+  cachedYears: ReadonlySet<number>
   onSelectYear: (year: number) => void
   onRefresh: () => void
 }

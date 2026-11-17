@@ -2,7 +2,7 @@ import type { YearStats } from '@/lib/github'
 
 export const LOGIN_PATH = '/api/auth/login'
 
-export type FetchError =
+type FetchError =
   | { ok: false; kind: 'http'; status: number }
   | { ok: false; kind: 'network' | 'invalid-body' }
 

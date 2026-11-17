@@ -11,6 +11,7 @@ import {
 } from '@/components/chapters'
 import { ProgressIndicator } from '@/components/ui'
 import { useScrollProgress, useKeyboardNavigation } from '@/hooks'
+// Imported from the file, not the @/hooks barrel: page.test.tsx mocks @/hooks with only useScrollProgress and useKeyboardNavigation
 import { useYearStats, AVAILABLE_YEARS } from '@/hooks/use-year-stats'
 import { downloadRewind } from '@/lib/export'
 import { formatFavoriteDays } from '@/lib/format-days'
