@@ -16,7 +16,7 @@ interface RewindErrorProps {
 
 export function RewindError({ failedRetries, retrying, onRetry }: RewindErrorProps) {
   return (
-    <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center">
+    <main className="min-h-screen supports-[height:100dvh]:min-h-dvh flex flex-col items-center justify-center px-6 text-center">
       <h1 className="font-display text-display-sm text-text-primary mb-4">
         Something went wrong
       </h1>

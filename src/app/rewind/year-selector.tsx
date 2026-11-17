@@ -22,7 +22,7 @@ export function YearSelector({
   onRefresh,
 }: YearSelectorProps) {
   return (
-    <div className="fixed top-2 left-4 z-50 flex items-center gap-2">
+    <div className="fixed top-[max(0.5rem,env(safe-area-inset-top))] left-[max(1rem,env(safe-area-inset-left))] z-50 flex items-center gap-2">
       <span className="text-caption text-text-tertiary mr-1 hidden sm:inline">Viewing</span>
       {years.map((year) => {
         const isLoading = loadingYears.has(year)

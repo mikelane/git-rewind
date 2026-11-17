@@ -62,6 +62,33 @@ function renderHarness(currentChapter = 1) {
   return result
 }
 
+describe('useKeyboardNavigation scroll behavior', () => {
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it.each([
+    [true, 'auto'],
+    [false, 'smooth'],
+  ])('It scrolls with behavior for reduced motion %s: %s', (reduced, behavior) => {
+    vi.stubGlobal('matchMedia', () => ({ matches: reduced }))
+    renderHarness(1)
+
+    pressOn(document.body, 'ArrowDown')
+
+    expect(scrollSpies[1]).toHaveBeenCalledWith({ behavior })
+  })
+
+  it('It scrolls smoothly when matchMedia is missing', () => {
+    vi.stubGlobal('matchMedia', undefined)
+    renderHarness(1)
+
+    pressOn(document.body, 'ArrowDown')
+
+    expect(scrollSpies[1]).toHaveBeenCalledWith({ behavior: 'smooth' })
+  })
+})
+
 describe('useKeyboardNavigation', () => {
   it('It scrolls to the next chapter on ArrowDown from the page body', () => {
     renderHarness(1)

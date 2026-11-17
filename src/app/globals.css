@@ -10,6 +10,8 @@
 
   body {
     @apply bg-bg-base text-text-primary font-body;
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
   }
 
   /* Focus styles */
@@ -92,8 +94,8 @@
     scroll-behavior: auto !important;
   }
 
-  /* Keep opacity for faded-in elements visible */
-  .opacity-0 {
+  /* Keep opacity for faded-in elements visible; dot-rail labels stay hidden until hover or focus */
+  .opacity-0:not(.rail-label) {
     opacity: 1 !important;
   }
 

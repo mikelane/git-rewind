@@ -20,7 +20,7 @@ vi.mock('next/font/google', () => {
 vi.mock('@vercel/analytics/react', () => ({ Analytics: () => null }))
 vi.mock('@vercel/speed-insights/next', () => ({ SpeedInsights: () => null }))
 
-import RootLayout from './layout'
+import RootLayout, { viewport } from './layout'
 
 const globalsCss = readFileSync(join(__dirname, 'globals.css'), 'utf8')
 
@@ -31,6 +31,28 @@ function fontOptions(name: string) {
 describe('globals.css', () => {
   it('It does not import fonts from Google via CSS', () => {
     expect(globalsCss).not.toContain('fonts.googleapis.com')
+  })
+
+  it.each(['left', 'right'])('It pads the body by the safe-area inset on the %s so landscape content clears the notch', (side) => {
+    const bodyRule = /body\s*\{[^}]*\}/.exec(globalsCss)?.[0] ?? ''
+
+    expect(bodyRule).toMatch(new RegExp(`padding-${side}:\\s*env\\(safe-area-inset-${side}\\)`))
+  })
+})
+
+describe('RootLayout viewport', () => {
+  it('It extends the layout under device cutouts so safe-area insets resolve', () => {
+    expect(viewport.viewportFit).toBe('cover')
+  })
+})
+
+describe('globals.css reduced motion', () => {
+  it('It excludes the dot-rail labels from the global opacity-0 override', () => {
+    expect(globalsCss).toMatch(/\.opacity-0:not\(\.rail-label\)\s*\{\s*opacity:\s*1\s*!important/)
+  })
+
+  it('It no longer forces every opacity-0 element visible', () => {
+    expect(globalsCss).not.toMatch(/^\s*\.opacity-0\s*\{/m)
   })
 })
 

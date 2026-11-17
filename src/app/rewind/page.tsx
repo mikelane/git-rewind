@@ -16,6 +16,7 @@ import { useYearStats, AVAILABLE_YEARS } from '@/hooks/use-year-stats'
 import { downloadRewind } from '@/lib/export'
 import { formatFavoriteDays } from '@/lib/format-days'
 import { classifyActivityLevel } from '@/lib/activity-level'
+import { chapterScrollBehavior } from '@/lib/motion'
 import { RewindError } from './rewind-error'
 import { YearSelector } from './year-selector'
 
@@ -65,7 +66,7 @@ export default function RewindPage() {
   useKeyboardNavigation({ chapterRefs, currentChapter })
 
   const scrollToChapter = (index: number) => {
-    chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
+    chapterRefs[index]?.current?.scrollIntoView({ behavior: chapterScrollBehavior() })
   }
 
   // Compute activity level based on stats
@@ -153,7 +154,7 @@ export default function RewindPage() {
     : null
 
   return (
-    <main id="main-content" ref={mainRef} tabIndex={-1} className="relative h-screen overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0 snap-y snap-proximity md:snap-mandatory">
+    <main id="main-content" ref={mainRef} tabIndex={-1} className="relative h-screen supports-[height:100dvh]:h-dvh overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0 snap-y snap-proximity md:snap-mandatory">
       <YearSelector
         years={AVAILABLE_YEARS}
         selectedYear={selectedYear}

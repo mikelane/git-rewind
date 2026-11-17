@@ -17,6 +17,7 @@ import {
 import { ProgressIndicator } from '@/components/ui'
 import { getLanguageColor } from '@/lib/constants'
 import { useScrollProgress, useKeyboardNavigation, useDemoBannerHeight } from '@/hooks'
+import { chapterScrollBehavior } from '@/lib/motion'
 import { cn } from '@/lib/utils'
 
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
@@ -140,13 +141,13 @@ export function DemoExperience({ year }: { year: number }) {
   useKeyboardNavigation({ chapterRefs, currentChapter })
 
   const scrollToChapter = (index: number) => {
-    chapterRefs[index]?.current?.scrollIntoView({ behavior: 'smooth' })
+    chapterRefs[index]?.current?.scrollIntoView({ behavior: chapterScrollBehavior() })
   }
 
   return (
     <main
       ref={mainRef}
-      className="relative h-screen overflow-y-auto snap-y snap-proximity md:snap-mandatory"
+      className="relative h-screen supports-[height:100dvh]:h-dvh overflow-y-auto snap-y snap-proximity md:snap-mandatory"
       style={{ scrollPaddingTop: 'var(--demo-banner-h, 0px)' }}
     >
       {/* Demo banner */}
@@ -155,7 +156,9 @@ export function DemoExperience({ year }: { year: number }) {
         className={cn(
           'fixed top-0 left-0 right-0 z-50',
           'bg-accent/90 backdrop-blur-sm',
-          'py-2 px-4 text-center'
+          'pt-[max(0.5rem,env(safe-area-inset-top))] pb-2',
+          'pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))]',
+          'text-center'
         )}
       >
         <p className="text-body-sm text-text-inverse font-medium">

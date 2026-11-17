@@ -30,8 +30,8 @@ export function ProgressIndicator({
       />
       <nav
         className={cn(
-          // right-1.5: the 44px step buttons keep the 8px dots where right-6 placed them
-          'fixed right-1.5 top-1/2 -translate-y-1/2 z-40',
+          // 0.375rem (right-1.5): the 44px step buttons keep the 8px dots where right-6 placed them
+          'fixed right-[max(0.375rem,env(safe-area-inset-right))] top-1/2 -translate-y-1/2 z-40',
           'flex flex-col',
           'hidden md:flex', // Hide on mobile
           className
@@ -52,7 +52,8 @@ export function ProgressIndicator({
                   className={cn(
                     'absolute right-[38px] px-2 py-1 rounded text-caption whitespace-nowrap',
                     'bg-bg-elevated text-text-secondary',
-                    'opacity-0 group-hover:opacity-100 transition-opacity duration-200',
+                    'rail-label opacity-0 group-hover:opacity-100 group-has-[:focus-visible]:opacity-100',
+                    'transition-opacity duration-200',
                     'pointer-events-none'
                   )}
                 >
