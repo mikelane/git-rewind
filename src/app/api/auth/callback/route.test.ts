@@ -27,203 +27,115 @@ vi.mock('@/lib/logger', () => ({
 import { GET } from './route'
 import { setSession } from '@/lib/auth'
 
-// Store the original fetch
+const APP_URL = 'http://localhost:3000'
+
+function createRequest(params: Record<string, string>): NextRequest {
+  const url = new URL(`${APP_URL}/api/auth/callback`)
+  url.search = new URLSearchParams(params).toString()
+  return new NextRequest(url)
+}
+
+function withStoredState(value: string | undefined) {
+  mockCookieStore.get.mockImplementation((name: string) =>
+    name === 'oauth-state' && value !== undefined ? { value } : undefined
+  )
+}
+
+function locationOf(response: Response): string | null {
+  return response.headers.get('location')
+}
+
+function stubExchange(body: unknown) {
+  global.fetch = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve(body) })
+}
+
 const originalFetch = global.fetch
 
 describe('GET /api/auth/callback', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    process.env.NEXT_PUBLIC_APP_URL = 'http://localhost:3000'
-    process.env.GITHUB_CLIENT_ID = 'test-client-id'
-    process.env.GITHUB_CLIENT_SECRET = 'test-client-secret'
-
-    // Mock fetch for token exchange
-    global.fetch = vi.fn().mockResolvedValue({
-      ok: true,
-      json: () => Promise.resolve({ access_token: 'test-token' }),
-    })
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', APP_URL)
+    vi.stubEnv('GITHUB_CLIENT_ID', 'test-client-id')
+    vi.stubEnv('GITHUB_CLIENT_SECRET', 'test-client-secret')
+    vi.stubEnv('NODE_ENV', 'test')
+    mockCookieStore.get.mockReturnValue(undefined)
+    stubExchange({ access_token: 'test-token' })
   })
 
   afterEach(() => {
     global.fetch = originalFetch
+    vi.unstubAllEnvs()
   })
 
-  function createRequest(params: Record<string, string>): NextRequest {
-    const url = new URL('http://localhost:3000/api/auth/callback')
-    Object.entries(params).forEach(([key, value]) => {
-      url.searchParams.set(key, value)
-    })
-    return new NextRequest(url)
-  }
+  describe('oauth-state cookie cleanup', () => {
+    it('deletes the oauth-state cookie during the install flow when it exists', async () => {
+      withStoredState('old-state-value')
 
-  describe('Bug #2: Cookie deletion in install flow', () => {
-    it('deletes oauth-state cookie during install flow when cookie exists', async () => {
-      // Setup: oauth-state cookie exists from a previous OAuth attempt
-      mockCookieStore.get.mockImplementation((name: string) => {
-        if (name === 'oauth-state') {
-          return { value: 'old-state-value' }
-        }
-        return undefined
-      })
+      await GET(createRequest({ code: 'test-code', setup_action: 'install', installation_id: '12345' }))
 
-      const request = createRequest({
-        code: 'test-code',
-        setup_action: 'install',
-        installation_id: '12345',
-      })
-
-      await GET(request)
-
-      // The oauth-state cookie should be deleted to prevent reuse
       expect(mockCookieStore.delete).toHaveBeenCalledWith('oauth-state')
     })
 
-    it('handles install flow gracefully when no oauth-state cookie exists', async () => {
-      mockCookieStore.get.mockReturnValue(undefined)
-
-      const request = createRequest({
-        code: 'test-code',
-        setup_action: 'install',
-        installation_id: '12345',
-      })
-
-      const response = await GET(request)
-
-      // Should succeed and redirect to rewind page
-      expect(response.status).toBe(307)
-      expect(response.headers.get('location')).toContain('/rewind')
-    })
-  })
-
-  describe('Bug #3: Undefined state comparison', () => {
-    it('returns invalid_state error when storedState cookie is undefined', async () => {
-      mockCookieStore.get.mockReturnValue(undefined) // No cookie exists
-
-      const request = createRequest({
-        code: 'test-code',
-        state: 'some-state',
-      })
-
-      const response = await GET(request)
-
-      expect(response.status).toBe(307)
-      expect(response.headers.get('location')).toContain('error=invalid_state')
-    })
-
-    it('returns invalid_state error when state values do not match', async () => {
-      mockCookieStore.get.mockImplementation((name: string) => {
-        if (name === 'oauth-state') {
-          return { value: 'stored-state' }
-        }
-        return undefined
-      })
-
-      const request = createRequest({
-        code: 'test-code',
-        state: 'different-state',
-      })
-
-      const response = await GET(request)
-
-      expect(response.status).toBe(307)
-      expect(response.headers.get('location')).toContain('error=invalid_state')
-    })
-
-    it('proceeds when state values match', async () => {
-      mockCookieStore.get.mockImplementation((name: string) => {
-        if (name === 'oauth-state') {
-          return { value: 'matching-state' }
-        }
-        return undefined
-      })
-
-      const request = createRequest({
-        code: 'test-code',
-        state: 'matching-state',
-      })
-
-      const response = await GET(request)
-
-      expect(response.status).toBe(307)
-      expect(response.headers.get('location')).toContain('/rewind')
-    })
-  })
-
-  describe('state cookie cleanup', () => {
-    it('deletes oauth-state cookie after successful standard OAuth flow', async () => {
-      mockCookieStore.get.mockImplementation((name: string) => {
-        if (name === 'oauth-state') {
-          return { value: 'valid-state' }
-        }
-        return undefined
-      })
-
-      const request = createRequest({
-        code: 'test-code',
-        state: 'valid-state',
-      })
-
-      await GET(request)
-
-      expect(mockCookieStore.delete).toHaveBeenCalledWith('oauth-state')
-    })
-  })
-
-  describe('redirect targets', () => {
-    function withStoredState(value: string) {
-      mockCookieStore.get.mockImplementation((name: string) =>
-        name === 'oauth-state' ? { value } : undefined
+    it('completes the install flow and redirects to /rewind when no oauth-state cookie exists', async () => {
+      const response = await GET(
+        createRequest({ code: 'test-code', setup_action: 'install', installation_id: '12345' })
       )
-    }
-
-    function locationOf(response: Response): string {
-      return response.headers.get('location') as string
-    }
-
-    it('redirects to the landing page with missing_params when there is no code', async () => {
-      const response = await GET(createRequest({ state: 'some-state' }))
 
       expect(response.status).toBe(307)
-      expect(locationOf(response)).toBe('http://localhost:3000/?error=missing_params')
+      expect(locationOf(response)).toBe(`${APP_URL}/rewind`)
+      expect(mockCookieStore.delete).not.toHaveBeenCalled()
     })
 
-    it('redirects to the landing page with missing_params when state is absent outside the install flow', async () => {
-      const response = await GET(createRequest({ code: 'test-code' }))
+    it('deletes the oauth-state cookie after a successful standard OAuth flow', async () => {
+      withStoredState('valid-state')
 
-      expect(response.status).toBe(307)
-      expect(locationOf(response)).toBe('http://localhost:3000/?error=missing_params')
+      await GET(createRequest({ code: 'test-code', state: 'valid-state' }))
+
+      expect(mockCookieStore.delete).toHaveBeenCalledWith('oauth-state')
     })
 
-    it('redirects to login after an install without a code', async () => {
-      const response = await GET(createRequest({ setup_action: 'install', installation_id: '1' }))
+    it('does not delete the oauth-state cookie on a state mismatch', async () => {
+      withStoredState('stored')
 
-      expect(locationOf(response)).toBe('http://localhost:3000/api/auth/login')
+      await GET(createRequest({ code: 'c', state: 'other' }))
+
+      expect(mockCookieStore.delete).not.toHaveBeenCalled()
     })
 
-    it('redirects to login after an update without a code', async () => {
-      const response = await GET(createRequest({ setup_action: 'update' }))
-
-      expect(locationOf(response)).toBe('http://localhost:3000/api/auth/login')
-    })
-
-    it('forwards an OAuth error from GitHub to the landing page', async () => {
-      const response = await GET(createRequest({ error: 'access_denied' }))
-
-      expect(locationOf(response)).toBe('http://localhost:3000/?error=access_denied')
-    })
-
-    it('url-encodes an OAuth error from GitHub', async () => {
-      const response = await GET(createRequest({ error: 'a b&c' }))
-
-      expect(locationOf(response)).toBe('http://localhost:3000/?error=a%20b%26c')
-    })
-
-    it('redirects to /rewind on success', async () => {
+    it('deletes the oauth-state cookie before a failed token exchange', async () => {
       withStoredState('s')
+      global.fetch = vi.fn().mockRejectedValue(new Error('network down'))
 
-      const response = await GET(createRequest({ code: 'c', state: 's' }))
+      await GET(createRequest({ code: 'c', state: 's' }))
 
-      expect(locationOf(response)).toBe('http://localhost:3000/rewind')
+      expect(mockCookieStore.delete).toHaveBeenCalledWith('oauth-state')
+    })
+  })
+
+  describe('state validation', () => {
+    it('rejects a state when no oauth-state cookie exists', async () => {
+      const response = await GET(createRequest({ code: 'test-code', state: 'some-state' }))
+
+      expect(response.status).toBe(307)
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=invalid_state`)
+    })
+
+    it('rejects a state that differs from the oauth-state cookie', async () => {
+      withStoredState('stored-state')
+
+      const response = await GET(createRequest({ code: 'test-code', state: 'different-state' }))
+
+      expect(response.status).toBe(307)
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=invalid_state`)
+    })
+
+    it('accepts a state that matches the oauth-state cookie', async () => {
+      withStoredState('matching-state')
+
+      const response = await GET(createRequest({ code: 'test-code', state: 'matching-state' }))
+
+      expect(response.status).toBe(307)
+      expect(locationOf(response)).toBe(`${APP_URL}/rewind`)
     })
 
     it('does not exchange a code or touch the session on a state mismatch', async () => {
@@ -234,13 +146,63 @@ describe('GET /api/auth/callback', () => {
       expect(global.fetch).not.toHaveBeenCalled()
       expect(setSession).not.toHaveBeenCalled()
     })
+
+    it('characterization: skips the state check when setup_action=install, even if the state mismatches', async () => {
+      withStoredState('stored')
+
+      const response = await GET(createRequest({ code: 'c', state: 'other', setup_action: 'install' }))
+
+      expect(locationOf(response)).toBe(`${APP_URL}/rewind`)
+      expect(setSession).toHaveBeenCalledWith('test-token')
+    })
+
+    it('still checks the state when setup_action=update has a code', async () => {
+      withStoredState('stored')
+
+      const response = await GET(createRequest({ code: 'c', state: 'other', setup_action: 'update' }))
+
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=invalid_state`)
+      expect(setSession).not.toHaveBeenCalled()
+    })
+  })
+
+  describe('redirect targets', () => {
+    it.each([
+      ['no code', { state: 'some-state' }, '/?error=missing_params'],
+      ['no state outside the install flow', { code: 'test-code' }, '/?error=missing_params'],
+      ['an install without a code', { setup_action: 'install', installation_id: '1' }, '/api/auth/login'],
+      ['an update without a code', { setup_action: 'update' }, '/api/auth/login'],
+      ['an OAuth error from GitHub', { error: 'access_denied' }, '/?error=access_denied'],
+      ['an OAuth error that needs url-encoding', { error: 'a b&c' }, '/?error=a%20b%26c'],
+      [
+        'an OAuth error together with an install and no code (install redirect wins)',
+        { error: 'access_denied', setup_action: 'install' },
+        '/api/auth/login',
+      ],
+      [
+        'an OAuth error together with an install and a code (error wins)',
+        { error: 'access_denied', setup_action: 'install', code: 'c' },
+        '/?error=access_denied',
+      ],
+    ])('redirects for %s', async (_case, params, expectedPath) => {
+      const response = await GET(createRequest(params))
+
+      expect(response.status).toBe(307)
+      expect(locationOf(response)).toBe(`${APP_URL}${expectedPath}`)
+    })
+
+    it('redirects to /rewind on success', async () => {
+      withStoredState('s')
+
+      const response = await GET(createRequest({ code: 'c', state: 's' }))
+
+      expect(locationOf(response)).toBe(`${APP_URL}/rewind`)
+    })
   })
 
   describe('token exchange', () => {
     beforeEach(() => {
-      mockCookieStore.get.mockImplementation((name: string) =>
-        name === 'oauth-state' ? { value: 's' } : undefined
-      )
+      withStoredState('s')
     })
 
     it('posts the code and app credentials to GitHub', async () => {
@@ -254,6 +216,22 @@ describe('GET /api/auth/callback', () => {
         client_secret: 'test-client-secret',
         code: 'the-code',
       })
+    })
+
+    it('asks for and sends JSON', async () => {
+      await GET(createRequest({ code: 'c', state: 's' }))
+
+      const init = vi.mocked(global.fetch).mock.calls[0][1]
+      expect(init?.headers).toEqual({
+        Accept: 'application/json',
+        'Content-Type': 'application/json',
+      })
+    })
+
+    it('does not cache the token exchange', async () => {
+      await GET(createRequest({ code: 'c', state: 's' }))
+
+      expect(vi.mocked(global.fetch).mock.calls[0][1]).toMatchObject({ cache: 'no-store' })
     })
 
     it('stores the returned access token in the session', async () => {
@@ -272,19 +250,16 @@ describe('GET /api/auth/callback', () => {
       const response = await GET(createRequest({ code: 'c', state: 's' }))
 
       expect(response.status).toBe(307)
-      expect(response.headers.get('location')).toBe('http://localhost:3000/?error=auth_failed')
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=auth_failed`)
       expect(setSession).not.toHaveBeenCalled()
     })
 
     it('redirects to ?error=auth_failed when the exchange response carries an error', async () => {
-      global.fetch = vi.fn().mockResolvedValue({
-        ok: true,
-        json: () => Promise.resolve({ error: 'bad_verification_code', error_description: 'expired' }),
-      })
+      stubExchange({ error: 'bad_verification_code', error_description: 'expired' })
 
       const response = await GET(createRequest({ code: 'c', state: 's' }))
 
-      expect(response.headers.get('location')).toBe('http://localhost:3000/?error=auth_failed')
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=auth_failed`)
       expect(setSession).not.toHaveBeenCalled()
     })
 
@@ -293,15 +268,34 @@ describe('GET /api/auth/callback', () => {
 
       const response = await GET(createRequest({ code: 'c', state: 's' }))
 
-      expect(response.headers.get('location')).toBe('http://localhost:3000/?error=auth_failed')
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=auth_failed`)
+    })
+
+    it('redirects to ?error=auth_failed when the exchange response is not valid JSON', async () => {
+      global.fetch = vi.fn().mockResolvedValue({
+        ok: true,
+        json: () => Promise.reject(new SyntaxError('Unexpected token')),
+      })
+
+      const response = await GET(createRequest({ code: 'c', state: 's' }))
+
+      expect(locationOf(response)).toBe(`${APP_URL}/?error=auth_failed`)
+      expect(setSession).not.toHaveBeenCalled()
+    })
+
+    it('characterization: an ok response with neither access_token nor error stores an undefined token and redirects to /rewind', async () => {
+      stubExchange({})
+
+      const response = await GET(createRequest({ code: 'c', state: 's' }))
+
+      expect(setSession).toHaveBeenCalledWith(undefined)
+      expect(locationOf(response)).toBe(`${APP_URL}/rewind`)
     })
   })
 
   describe('installation-id cookie', () => {
     beforeEach(() => {
-      mockCookieStore.get.mockImplementation((name: string) =>
-        name === 'oauth-state' ? { value: 's' } : undefined
-      )
+      withStoredState('s')
     })
 
     it('stores the installation id with secure flags for 30 days', async () => {
@@ -314,6 +308,18 @@ describe('GET /api/auth/callback', () => {
         maxAge: 60 * 60 * 24 * 30,
         path: '/',
       })
+    })
+
+    it('marks the installation id cookie secure in production', async () => {
+      vi.stubEnv('NODE_ENV', 'production')
+
+      await GET(createRequest({ code: 'c', state: 's', installation_id: '12345' }))
+
+      expect(mockCookieStore.set).toHaveBeenCalledWith(
+        'installation-id',
+        '12345',
+        expect.objectContaining({ secure: true })
+      )
     })
 
     it('does not set the cookie when no installation id is given', async () => {

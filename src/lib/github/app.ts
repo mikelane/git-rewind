@@ -52,6 +52,7 @@ export async function getInstallationToken(installationId: number): Promise<stri
     `${GITHUB_API_URL}/app/installations/${installationId}/access_tokens`,
     {
       method: 'POST',
+      cache: 'no-store',
       headers: {
         'Authorization': `Bearer ${jwt}`,
         'Accept': 'application/vnd.github+json',
