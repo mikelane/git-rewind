@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
-import { render, waitFor, screen, fireEvent } from '@testing-library/react'
+import { render, waitFor, screen, fireEvent, act } from '@testing-library/react'
 
 // Track unhandled rejections
 let unhandledRejection: Error | null = null
@@ -54,6 +54,7 @@ vi.mock('@/lib/format-days', () => ({
 
 import { renderToString } from 'react-dom/server'
 import { getCached, setCache } from '@/lib/cache'
+import { compareYears } from '@/lib/comparisons'
 import RewindPage from './page'
 
 const originalFetch = global.fetch
@@ -392,7 +393,7 @@ describe('RewindPage', () => {
       fireEvent.click(await findTryAgain())
 
       await waitFor(() => expect(mainYearCalls()).toHaveLength(2))
-      await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toBeEnabled())
+      await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-disabled', 'false'))
       expect(screen.getByText('Something went wrong')).toBeInTheDocument()
     })
 
@@ -416,10 +417,20 @@ describe('RewindPage', () => {
         await waitFor(() => expect(mainYearCalls()).toHaveLength(2))
       }
 
-      it('It disables the Try again button', async () => {
+      it('It marks the Try again button aria-disabled', async () => {
         await startRetry()
 
-        expect(screen.getByRole('button', { name: 'Try again' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-disabled', 'true')
+      })
+
+      it('It keeps focus on the Try again button', async () => {
+        await startRetry()
+
+        const button = screen.getByRole('button', { name: 'Try again' })
+        button.focus()
+
+        expect(button).not.toHaveAttribute('disabled')
+        expect(button).toHaveFocus()
       })
 
       it('It keeps the error view mounted instead of the loading skeleton', async () => {
@@ -464,5 +475,217 @@ describe('RewindPage', () => {
       await waitFor(() => expect(vi.mocked(global.fetch).mock.calls.length).toBeGreaterThan(1))
       expect(screen.queryByText('Something went wrong')).not.toBeInTheDocument()
     })
+  })
+})
+
+const year = new Date().getFullYear()
+const okBody = (y: number) => ({
+  user: { username: 'test', name: 'Test User', avatarUrl: '' },
+  year: y,
+  totalContributions: 100,
+  dataCompleteness: { restrictedContributions: 0, percentageAccessible: 100, reposAnalyzed: 5, truncation: {} },
+  rhythm: { activeDays: 100, totalDays: 365, longestStreak: 10, currentStreak: 5, busiestMonth: 'March', busiestMonthCount: 50, contributionsByMonth: [] },
+  craft: { primaryLanguage: 'TypeScript', primaryLanguagePercentage: 50, languages: [], topRepository: null },
+  collaboration: { pullRequestsOpened: 10, pullRequestsMerged: 8, pullRequestsReviewed: 5, issuesClosed: 3, uniqueCollaborators: 2, topCollaborators: [], reviewStyle: 'balanced', isMergeRateApproximate: false },
+  peakMoments: { busiestDay: null, favoriteTimeOfDay: 'evening', favoriteDaysOfWeek: [], lateNightCommits: 0, weekendCommits: 0, averageCommitsPerActiveDay: 1 },
+})
+const urlFor = (y: number) => `/api/stats?year=${y}&clientDate=`
+const callsFor = (y: number) => vi.mocked(global.fetch).mock.calls.filter(c => String(c[0]).startsWith(urlFor(y)))
+
+describe('RewindPage retry flow regressions', () => {
+  const originalFetch = global.fetch
+  const originalLocation = window.location
+  beforeEach(() => {
+    vi.clearAllMocks()
+    vi.mocked(getCached).mockImplementation(() => null)
+    Object.defineProperty(window, 'location', { value: { href: '/rewind' }, writable: true, configurable: true })
+  })
+  afterEach(() => {
+    global.fetch = originalFetch
+    Object.defineProperty(window, 'location', { value: originalLocation, writable: true, configurable: true })
+  })
+
+  it('It shows the error view when the selected year returns a 200 with a null JSON body', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) =>
+      Promise.resolve(url.startsWith(urlFor(year))
+        ? { ok: true, status: 200, json: () => Promise.resolve(null) }
+        : { ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+    )
+    render(<RewindPage />)
+
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+
+  it('It changes live-region content when a retry fails so screen readers hear the outcome', async () => {
+    const liveText = () =>
+      Array.from(document.querySelectorAll('[aria-live],[role="status"],[role="alert"]'))
+        .map(el => el.textContent ?? '')
+        .join('|')
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({}) })
+    render(<RewindPage />)
+    const button = await screen.findByRole('button', { name: 'Try again' })
+    const before = liveText()
+
+    fireEvent.click(button)
+    await waitFor(() => expect(callsFor(year)).toHaveLength(2))
+    await waitFor(() => expect(screen.getByRole('button', { name: 'Try again' })).toHaveAttribute('aria-disabled', 'false'))
+
+    expect(liveText()).not.toBe(before)
+  })
+
+  it('It puts the load error message in a polite live region', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({}) })
+    render(<RewindPage />)
+    await screen.findByRole('button', { name: 'Try again' })
+
+    expect(screen.getByRole('status')).toHaveTextContent("We couldn't load your GitHub data. This is usually temporary.")
+  })
+
+  it('It tells screen readers the retry also failed', async () => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 500, json: () => Promise.resolve({}) })
+    render(<RewindPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+
+    await waitFor(() => expect(screen.getByRole('status')).toHaveTextContent("Still couldn't load your GitHub data. Try again in a moment."))
+  })
+
+  it.each([
+    ['null', null],
+    ['a string', 'oops'],
+    ['a number', 42],
+  ])('It shows the error view and caches nothing when a 200 body is %s', async (_name, body) => {
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(body) })
+    render(<RewindPage />)
+
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(setCache).not.toHaveBeenCalled()
+  })
+
+  it('It shows the error view when computing the comparison throws after a successful fetch', async () => {
+    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? okBody(year - 1) : null)) as typeof getCached)
+    vi.mocked(compareYears).mockImplementation(() => {
+      throw new TypeError('corrupt cached comparison data')
+    })
+    global.fetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+    render(<RewindPage />)
+
+    expect(await screen.findByRole('button', { name: 'Try again' })).toBeInTheDocument()
+    expect(screen.getByText("We couldn't load your GitHub data. This is usually temporary.")).toBeInTheDocument()
+  })
+
+  it('It shows the error view, with no unhandled rejection, when a retry succeeds but computing the comparison throws', async () => {
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown) => {
+      rejections.push(reason)
+    }
+    const priorListeners = process.listeners('unhandledRejection')
+    process.removeAllListeners('unhandledRejection')
+    process.on('unhandledRejection', onRejection)
+    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? okBody(year - 1) : null)) as typeof getCached)
+    vi.mocked(compareYears).mockImplementation(() => {
+      throw new TypeError('corrupt cached comparison data')
+    })
+    let mainCalls = 0
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.startsWith(urlFor(year)) && ++mainCalls === 1) {
+        return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+    })
+    render(<RewindPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    await waitFor(() => expect(compareYears).toHaveBeenCalled())
+    await new Promise(resolve => setTimeout(resolve, 50))
+    process.removeAllListeners('unhandledRejection')
+    priorListeners.forEach(listener => process.on('unhandledRejection', listener))
+
+    expect(rejections).toEqual([])
+    expect(screen.getByRole('button', { name: 'Try again' })).toBeInTheDocument()
+  })
+
+  it('It leaves no unhandled rejection when computing the comparison throws', async () => {
+    const rejections: unknown[] = []
+    const onRejection = (reason: unknown) => {
+      rejections.push(reason)
+    }
+    const priorListeners = process.listeners('unhandledRejection')
+    process.removeAllListeners('unhandledRejection')
+    process.on('unhandledRejection', onRejection)
+    vi.mocked(getCached).mockImplementation(((_ns: string, y: number) => (y === year - 1 ? okBody(year - 1) : null)) as typeof getCached)
+    vi.mocked(compareYears).mockImplementation(() => {
+      throw new TypeError('corrupt cached comparison data')
+    })
+    global.fetch = vi.fn().mockImplementation(() =>
+      Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+    )
+    render(<RewindPage />)
+    await waitFor(() => expect(compareYears).toHaveBeenCalled())
+    await new Promise(resolve => setTimeout(resolve, 50))
+    process.removeAllListeners('unhandledRejection')
+    priorListeners.forEach(listener => process.on('unhandledRejection', listener))
+
+    expect(rejections).toEqual([])
+  })
+
+  // Test-gap probes (expected to PASS on correct code; they kill surviving mutants)
+  it('It issues one retry fetch when Try again is clicked twice before React re-renders', async () => {
+    global.fetch = vi.fn().mockImplementation((url: string) =>
+      url.startsWith(urlFor(year)) && callsFor(year).length > 1
+        ? new Promise(() => {})
+        : Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+    )
+    render(<RewindPage />)
+    const button = await screen.findByRole('button', { name: 'Try again' })
+
+    act(() => {
+      button.click()
+      button.click()
+    })
+
+    expect(callsFor(year)).toHaveLength(2)
+  })
+
+  it('It retries the switched-to year rather than the current year', async () => {
+    const prev = year - 1
+    let prevCalls = 0
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.startsWith(urlFor(prev))) {
+        prevCalls++
+        // prefetch (1) hangs, explicit fetch (2) fails, retry (3) succeeds
+        if (prevCalls === 1) {
+          return new Promise(() => {})
+        }
+        if (prevCalls === 2) {
+          return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+        }
+      }
+      const y = Number(new URL(url, 'http://x').searchParams.get('year'))
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(y)) })
+    })
+    render(<RewindPage />)
+    await screen.findByTestId('prologue')
+    fireEvent.click(screen.getByRole('button', { name: new RegExp(`View ${prev}`) }))
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+
+    await waitFor(() => expect(prevCalls).toBe(3))
+    expect(await screen.findByTestId('prologue')).toBeInTheDocument()
+  })
+
+  it('It starts the comparison prefetch after a successful retry', async () => {
+    let mainCalls = 0
+    global.fetch = vi.fn().mockImplementation((url: string) => {
+      if (url.startsWith(urlFor(year))) {
+        mainCalls++
+        if (mainCalls === 1) {
+          return Promise.resolve({ ok: false, status: 500, json: () => Promise.resolve({}) })
+        }
+      }
+      return Promise.resolve({ ok: true, status: 200, json: () => Promise.resolve(okBody(year)) })
+    })
+    render(<RewindPage />)
+    fireEvent.click(await screen.findByRole('button', { name: 'Try again' }))
+    await screen.findByTestId('prologue')
+
+    await waitFor(() => expect(callsFor(year - 1)).toHaveLength(1))
   })
 })

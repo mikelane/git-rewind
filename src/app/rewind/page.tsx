@@ -41,7 +41,12 @@ type FetchYearResult =
 
 type FetchError = Extract<FetchYearResult, { ok: false }>
 
+type LoadErrorKind = FetchError['kind'] | 'processing'
+
+type LoadError = { kind: LoadErrorKind; status?: number }
+
 const LOAD_ERROR_MESSAGE = "We couldn't load your GitHub data. This is usually temporary."
+const RETRY_FAILED_MESSAGE = "Still couldn't load your GitHub data. Try again in a moment."
 
 const CHAPTER_NAMES = ['Intro', 'Rhythm', 'Craft', 'Collaboration', 'Peak', 'Summary']
 
@@ -50,8 +55,9 @@ export default function RewindPage() {
   const [comparison, setComparison] = useState<YearComparison | null>(null)
   const [comparisonLoading, setComparisonLoading] = useState(false)
   const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<{ kind: FetchError['kind']; status?: number } | null>(null)
+  const [error, setError] = useState<LoadError | null>(null)
   const [retrying, setRetrying] = useState(false)
+  const [retryFailed, setRetryFailed] = useState(false)
   const retryInFlightRef = useRef(false)
   const [selectedYear, setSelectedYear] = useState(CURRENT_YEAR)
   const [loadingYears, setLoadingYears] = useState<Set<number>>(new Set())
@@ -130,7 +136,10 @@ export default function RewindPage() {
     }
 
     try {
-      const data: YearStats = await response.json()
+      const data: YearStats | null = await response.json()
+      if (typeof data !== 'object' || data === null) {
+        return { ok: false, kind: 'invalid-body' }
+      }
       setCache('stats', year, data)
       syncCachedYears()
       return { ok: true, stats: data }
@@ -228,25 +237,34 @@ export default function RewindPage() {
     })
   }, [fetchYearStats, computeComparison])
 
+  const applyFetchResult = useCallback((year: number, result: FetchYearResult): LoadError | null => {
+    if (!result.ok) {
+      return { kind: result.kind, status: result.status }
+    }
+    try {
+      showLoadedStats(year, result.stats)
+      return null
+    } catch (processingError) {
+      comparisonLogger.error(`Failed to process stats for ${year}:`, processingError)
+      return { kind: 'processing' }
+    }
+  }, [showLoadedStats])
+
   const fetchStats = useCallback(async (year: number) => {
     setLoading(true)
     setError(null)
+    setRetryFailed(false)
     setComparison(null)
     setComparisonLoading(false)
 
     try {
       // Fetch the selected year
       const result = await fetchYearStats(year)
-
-      if (!result.ok) {
-        setError({ kind: result.kind, status: result.status })
-        return
-      }
-      showLoadedStats(year, result.stats)
+      setError(applyFetchResult(year, result))
     } finally {
       setLoading(false)
     }
-  }, [fetchYearStats, showLoadedStats])
+  }, [fetchYearStats, applyFetchResult])
 
   const handleRetry = useCallback(async () => {
     if (retryInFlightRef.current) {
@@ -256,17 +274,14 @@ export default function RewindPage() {
     setRetrying(true)
     try {
       const result = await fetchYearStats(selectedYear)
-      if (result.ok) {
-        setError(null)
-        showLoadedStats(selectedYear, result.stats)
-      } else {
-        setError({ kind: result.kind, status: result.status })
-      }
+      const loadError = applyFetchResult(selectedYear, result)
+      setError(loadError)
+      setRetryFailed(loadError !== null)
     } finally {
       retryInFlightRef.current = false
       setRetrying(false)
     }
-  }, [selectedYear, fetchYearStats, showLoadedStats])
+  }, [selectedYear, fetchYearStats, applyFetchResult])
 
   const handleRefresh = useCallback(async () => {
     setRefreshing(true)
@@ -297,16 +312,18 @@ export default function RewindPage() {
         <h1 className="font-display text-display-sm text-text-primary mb-4">
           Something went wrong
         </h1>
-        <p className="text-body text-text-secondary mb-8 max-w-md">{LOAD_ERROR_MESSAGE}</p>
+        <p role="status" className="text-body text-text-secondary mb-8 max-w-md">
+          {retryFailed ? RETRY_FAILED_MESSAGE : LOAD_ERROR_MESSAGE}
+        </p>
         <button
           type="button"
           onClick={handleRetry}
-          disabled={retrying}
+          aria-disabled={retrying}
           className={cn(
             'px-6 py-3 rounded-xl',
             'bg-accent text-text-inverse font-medium',
             'hover:bg-accent-hover transition-colors',
-            'disabled:cursor-not-allowed disabled:opacity-70'
+            'aria-disabled:cursor-not-allowed aria-disabled:opacity-70'
           )}
         >
           Try again
