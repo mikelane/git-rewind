@@ -1,53 +1,32 @@
 import { describe, it, expect, vi } from 'vitest'
-import { render } from '@testing-library/react'
-import type { TheCollaborationData } from '@/components/chapters'
-import { isBot } from '@/lib/bot-detection'
+import { render, screen } from '@testing-library/react'
 import { DemoExperience } from './demo-experience'
-
-const collaborationChapterProps = vi.hoisted(() => ({
-  data: null as TheCollaborationData | null,
-}))
-
-vi.mock('@/components/chapters', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/components/chapters')>()
-  return {
-    ...actual,
-    TheCollaborationChapter: ({ data }: { data: TheCollaborationData | null }) => {
-      collaborationChapterProps.data = data
-      return null
-    },
-  }
-})
 
 vi.mock('@/hooks', () => ({
   useScrollProgress: () => ({ currentChapter: 0, scrollProgress: 0 }),
   useKeyboardNavigation: () => undefined,
 }))
 
-describe('DemoExperience collaboration data', () => {
-  const renderCollaborationData = (): TheCollaborationData => {
+describe('DemoExperience collaboration chapter', () => {
+  it('renders mona as a collaborator', () => {
     render(<DemoExperience year={2026} />)
-    return collaborationChapterProps.data as TheCollaborationData
-  }
 
-  it('It lists the five human collaborators in order', () => {
-    expect(renderCollaborationData().topCollaborators).toEqual([
-      { username: 'mona', interactions: 47 },
-      { username: 'octocat', interactions: 34 },
-      { username: 'defunkt', interactions: 28 },
-      { username: 'mojombo', interactions: 19 },
-      { username: 'pjhyett', interactions: 15 },
-    ])
+    expect(screen.getByText('@mona')).toBeTruthy()
   })
 
-  it.each(['mona', 'octocat', 'defunkt', 'mojombo', 'pjhyett'])(
-    'It does not treat %s as a bot',
-    username => {
-      expect(isBot(username)).toBe(false)
+  it.each(['@hubot', '@dependabot', '@github-actions', '@renovate'])(
+    'does not render %s',
+    bot => {
+      render(<DemoExperience year={2026} />)
+
+      expect(screen.queryByText(bot)).toBeNull()
     }
   )
 
-  it('It reports 19 unique collaborators', () => {
-    expect(renderCollaborationData().uniqueCollaborators).toBe(19)
+  it('renders the unique collaborator count of 19', () => {
+    render(<DemoExperience year={2026} />)
+
+    const callout = screen.getByText(/different people this year/)
+    expect(callout.textContent).toBe('You worked with 19 different people this year.')
   })
 })

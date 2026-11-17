@@ -30,6 +30,7 @@ describe('isBot', () => {
       expect(isBot(login)).toBe(true)
     })
 
+    // Documents the accepted includes() trade-off (issue #42 decision)
     it('accepts substring matches such as hubotfan as bots', () => {
       expect(isBot('hubotfan')).toBe(true)
     })
