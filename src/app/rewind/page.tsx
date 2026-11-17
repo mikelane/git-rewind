@@ -154,7 +154,7 @@ export default function RewindPage() {
     : null
 
   return (
-    <main id="main-content" ref={mainRef} tabIndex={-1} className="relative h-dvh overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0 snap-y snap-proximity md:snap-mandatory">
+    <main id="main-content" ref={mainRef} tabIndex={-1} className="relative h-screen supports-[height:100dvh]:h-dvh overflow-y-auto focus-visible:ring-0 focus-visible:ring-offset-0 snap-y snap-proximity md:snap-mandatory">
       <YearSelector
         years={AVAILABLE_YEARS}
         selectedYear={selectedYear}

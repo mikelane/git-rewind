@@ -7,7 +7,6 @@ describe('RewindError', () => {
     render(<RewindError failedRetries={0} retrying={false} onRetry={() => {}} />)
 
     const main = screen.getByRole('main')
-    expect(main).toHaveClass('min-h-dvh')
-    expect(main).not.toHaveClass('min-h-screen')
+    expect(main).toHaveClass('min-h-screen', 'supports-[height:100dvh]:min-h-dvh')
   })
 })

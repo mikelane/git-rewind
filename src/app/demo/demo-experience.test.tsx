@@ -148,8 +148,7 @@ describe('DemoExperience safe areas and dynamic viewport', () => {
   it('It renders the scroll container at the dynamic viewport height', () => {
     render(<DemoExperience year={2026} />)
 
-    expect(screen.getByRole('main')).toHaveClass('h-dvh')
-    expect(screen.getByRole('main')).not.toHaveClass('h-screen')
+    expect(screen.getByRole('main')).toHaveClass('h-screen', 'supports-[height:100dvh]:h-dvh')
   })
 
   it.each([

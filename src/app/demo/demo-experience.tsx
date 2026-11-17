@@ -147,7 +147,7 @@ export function DemoExperience({ year }: { year: number }) {
   return (
     <main
       ref={mainRef}
-      className="relative h-dvh overflow-y-auto snap-y snap-proximity md:snap-mandatory"
+      className="relative h-screen supports-[height:100dvh]:h-dvh overflow-y-auto snap-y snap-proximity md:snap-mandatory"
       style={{ scrollPaddingTop: 'var(--demo-banner-h, 0px)' }}
     >
       {/* Demo banner */}

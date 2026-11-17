@@ -132,8 +132,7 @@ describe('RewindPage', () => {
     it('It renders the scroll container at the dynamic viewport height', async () => {
       const main = await renderLoadedStory()
 
-      expect(main).toHaveClass('h-dvh')
-      expect(main).not.toHaveClass('h-screen')
+      expect(main).toHaveClass('h-screen', 'supports-[height:100dvh]:h-dvh')
     })
 
     it('It renders six chapter wrappers', async () => {
