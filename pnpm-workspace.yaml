@@ -1,3 +1,5 @@
+packages:
+  - "."
 overrides:
   "next>postcss": "^8.5.33"
 onlyBuiltDependencies:
