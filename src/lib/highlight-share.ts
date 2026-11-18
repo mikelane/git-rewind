@@ -4,7 +4,7 @@
  * Text is neutral and factual to avoid being braggy
  */
 
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://gitrewind.dev'
+import { getAppUrl } from './app-url'
 
 export const HighlightType = {
   Streak: 'streak',
@@ -89,7 +89,7 @@ export async function shareHighlight(highlight: Highlight): Promise<ShareResult>
       await navigator.share({
         title: `Git Rewind ${highlight.year}`,
         text: shareText,
-        url: APP_URL,
+        url: getAppUrl(),
       })
       return { method: 'webshare', success: true }
     } catch {
@@ -112,7 +112,7 @@ export function generateHighlightShareText(highlight: Highlight): string {
 
 @${username}'s ${year} Git Rewind
 
-${APP_URL}`
+${getAppUrl()}`
     }
 
     case HighlightType.PeakDay: {
@@ -121,7 +121,7 @@ ${APP_URL}`
 
 @${username}'s ${year} Git Rewind
 
-${APP_URL}`
+${getAppUrl()}`
     }
 
     case HighlightType.Language: {
@@ -129,7 +129,7 @@ ${APP_URL}`
 
 @${username}'s ${year} Git Rewind
 
-${APP_URL}`
+${getAppUrl()}`
     }
 
     case HighlightType.ActiveDays: {
@@ -138,7 +138,7 @@ ${APP_URL}`
 
 @${username}'s ${year} Git Rewind
 
-${APP_URL}`
+${getAppUrl()}`
     }
 
     case HighlightType.Contributions: {
@@ -148,7 +148,7 @@ ${APP_URL}`
 
 @${username}'s ${year} Git Rewind
 
-${APP_URL}`
+${getAppUrl()}`
     }
   }
 }

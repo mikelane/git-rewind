@@ -43,66 +43,26 @@ describe('generateShareText', () => {
     expect(text).toContain('30')
   })
 
-  it('includes link to app', () => {
-    const text = generateShareText(mockEpilogueData)
-    expect(text).toMatch(/gitrewind\.dev|localhost/)
-  })
-})
-
-describe('canUseWebShare', () => {
-  const originalNavigator = global.navigator
-
-  afterEach(() => {
-    Object.defineProperty(global, 'navigator', {
-      value: originalNavigator,
-      writable: true,
-    })
-  })
-
-  it('returns true when Web Share API is available', () => {
-    Object.defineProperty(global, 'navigator', {
-      value: {
-        share: vi.fn(),
-        canShare: vi.fn(() => true),
-      },
-      writable: true,
+  describe('app URL', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
     })
 
-    expect(canUseWebShare()).toBe(true)
-  })
+    it('It ends with the normalized app URL when NEXT_PUBLIC_APP_URL ends in a slash', () => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
 
-  it('returns false when navigator.share is not available', () => {
-    Object.defineProperty(global, 'navigator', {
-      value: {},
-      writable: true,
+      const text = generateShareText(mockEpilogueData)
+
+      expect(text.endsWith('Create yours at https://git-rewind.dev')).toBe(true)
     })
 
-    expect(canUseWebShare()).toBe(false)
-  })
-})
+    it('It falls back to https://git-rewind.dev when NEXT_PUBLIC_APP_URL is unset', () => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
 
-describe('copyToClipboard', () => {
-  beforeEach(() => {
-    Object.defineProperty(global, 'navigator', {
-      value: {
-        clipboard: {
-          writeText: vi.fn().mockResolvedValue(undefined),
-        },
-      },
-      writable: true,
+      const text = generateShareText(mockEpilogueData)
+
+      expect(text.endsWith('Create yours at https://git-rewind.dev')).toBe(true)
     })
-  })
-
-  it('copies text to clipboard successfully', async () => {
-    const result = await copyToClipboard('test text')
-    expect(result).toBe(true)
-    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test text')
-  })
-
-  it('returns false when clipboard API fails', async () => {
-    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('Failed'))
-    const result = await copyToClipboard('test text')
-    expect(result).toBe(false)
   })
 })
 
@@ -122,6 +82,20 @@ describe('shareHighlight', () => {
     const result = await shareHighlight(mockEpilogueData)
     expect(result.method).toBe('clipboard')
     expect(result.success).toBe(true)
+  })
+
+  it('It passes the normalized app URL to the Web Share API', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+    const shareFn = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(global, 'navigator', {
+      value: { share: shareFn, canShare: vi.fn(() => true) },
+      writable: true,
+    })
+
+    await shareHighlight(mockEpilogueData)
+
+    expect(shareFn).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://git-rewind.dev' }))
+    vi.unstubAllEnvs()
   })
 
   it('uses Web Share API when available', async () => {

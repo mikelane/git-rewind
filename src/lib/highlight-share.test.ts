@@ -14,6 +14,7 @@ import {
   type LanguageHighlight,
   type ActiveDaysHighlight,
   type ContributionsHighlight,
+  type Highlight,
 } from './highlight-share'
 
 describe('HighlightType', () => {
@@ -162,37 +163,34 @@ describe('generateHighlightShareText', () => {
     })
   })
 
-  describe('all highlights include app URL', () => {
-    it('includes gitrewind.dev link in streak highlight', () => {
-      const highlight: StreakHighlight = {
-        type: HighlightType.Streak,
-        ...baseData,
-        longestStreak: 30,
-      }
-      const text = generateHighlightShareText(highlight)
-      expect(text).toMatch(/gitrewind\.dev|localhost/)
+  describe('app URL in share text', () => {
+    const highlights: Highlight[] = [
+      { type: HighlightType.Streak, ...baseData, longestStreak: 30 },
+      { type: HighlightType.PeakDay, ...baseData, date: 'March 15', commits: 42 },
+      { type: HighlightType.Language, ...baseData, language: 'TypeScript', percentage: 65 },
+      { type: HighlightType.ActiveDays, ...baseData, activeDays: 200 },
+      { type: HighlightType.Contributions, ...baseData, totalContributions: 1234 },
+    ]
+
+    afterEach(() => {
+      vi.unstubAllEnvs()
     })
 
-    it('includes gitrewind.dev link in peak day highlight', () => {
-      const highlight: PeakDayHighlight = {
-        type: HighlightType.PeakDay,
-        ...baseData,
-        date: 'March 15',
-        commits: 42,
-      }
+    it.each(highlights)('It ends the $type highlight with the normalized app URL', (highlight) => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+
       const text = generateHighlightShareText(highlight)
-      expect(text).toMatch(/gitrewind\.dev|localhost/)
+
+      expect(text.endsWith('\n\nhttps://git-rewind.dev')).toBe(true)
+      expect(text).not.toMatch(/https:\/\/git-rewind\.dev\/\//)
     })
 
-    it('includes gitrewind.dev link in language highlight', () => {
-      const highlight: LanguageHighlight = {
-        type: HighlightType.Language,
-        ...baseData,
-        language: 'TypeScript',
-        percentage: 65,
-      }
+    it.each(highlights)('It uses git-rewind.dev in the $type highlight when the app URL is unset', (highlight) => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
+
       const text = generateHighlightShareText(highlight)
-      expect(text).toMatch(/gitrewind\.dev|localhost/)
+
+      expect(text.endsWith('\n\nhttps://git-rewind.dev')).toBe(true)
     })
   })
 })
@@ -290,6 +288,20 @@ describe('shareHighlight', () => {
     expect(result.method).toBe('webshare')
     expect(result.success).toBe(true)
     expect(shareFn).toHaveBeenCalled()
+  })
+
+  it('It passes the normalized app URL to the Web Share API', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+    const shareFn = vi.fn().mockResolvedValue(undefined)
+    Object.defineProperty(global, 'navigator', {
+      value: { share: shareFn, canShare: vi.fn(() => true) },
+      writable: true,
+    })
+
+    await shareHighlight(streakHighlight)
+
+    expect(shareFn).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://git-rewind.dev' }))
+    vi.unstubAllEnvs()
   })
 
   it('falls back to clipboard when Web Share fails', async () => {
