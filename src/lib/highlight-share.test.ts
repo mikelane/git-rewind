@@ -132,7 +132,7 @@ describe('generateHighlightShareText', () => {
     })
 
     it('uses plural "days" for multiple active days', () => {
-      const text = generateHighlightShareText({ ...activeDaysHighlight, activeDays: 200 })
+      const text = generateHighlightShareText({ ...activeDaysHighlight, activeDays: 200, totalDays: 366 })
       expect(text).toContain('200 active days')
     })
   })
@@ -168,7 +168,7 @@ describe('generateHighlightShareText', () => {
       { type: HighlightType.Streak, ...baseData, longestStreak: 30 },
       { type: HighlightType.PeakDay, ...baseData, date: 'March 15', commits: 42 },
       { type: HighlightType.Language, ...baseData, language: 'TypeScript', percentage: 65 },
-      { type: HighlightType.ActiveDays, ...baseData, activeDays: 200 },
+      { type: HighlightType.ActiveDays, ...baseData, activeDays: 200, totalDays: 366 },
       { type: HighlightType.Contributions, ...baseData, totalContributions: 1234 },
     ]
 

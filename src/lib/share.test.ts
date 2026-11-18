@@ -66,6 +66,63 @@ describe('generateShareText', () => {
   })
 })
 
+describe('canUseWebShare', () => {
+  const originalNavigator = global.navigator
+
+  afterEach(() => {
+    Object.defineProperty(global, 'navigator', {
+      value: originalNavigator,
+      writable: true,
+    })
+  })
+
+  it('returns true when Web Share API is available', () => {
+    Object.defineProperty(global, 'navigator', {
+      value: {
+        share: vi.fn(),
+        canShare: vi.fn(() => true),
+      },
+      writable: true,
+    })
+
+    expect(canUseWebShare()).toBe(true)
+  })
+
+  it('returns false when navigator.share is not available', () => {
+    Object.defineProperty(global, 'navigator', {
+      value: {},
+      writable: true,
+    })
+
+    expect(canUseWebShare()).toBe(false)
+  })
+})
+
+describe('copyToClipboard', () => {
+  beforeEach(() => {
+    Object.defineProperty(global, 'navigator', {
+      value: {
+        clipboard: {
+          writeText: vi.fn().mockResolvedValue(undefined),
+        },
+      },
+      writable: true,
+    })
+  })
+
+  it('copies text to clipboard successfully', async () => {
+    const result = await copyToClipboard('test text')
+    expect(result).toBe(true)
+    expect(navigator.clipboard.writeText).toHaveBeenCalledWith('test text')
+  })
+
+  it('returns false when clipboard API fails', async () => {
+    vi.mocked(navigator.clipboard.writeText).mockRejectedValue(new Error('Failed'))
+    const result = await copyToClipboard('test text')
+    expect(result).toBe(false)
+  })
+})
+
 describe('shareHighlight', () => {
   beforeEach(() => {
     Object.defineProperty(global, 'navigator', {

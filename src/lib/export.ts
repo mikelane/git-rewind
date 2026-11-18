@@ -5,6 +5,7 @@
 import type { YearStats } from './github'
 import { getLanguageColor } from './constants'
 import { formatFavoriteDays } from './format-days'
+import { getAppUrl } from './app-url'
 
 /**
  * Escape HTML special characters to prevent XSS attacks
@@ -262,7 +263,7 @@ export function generateHTML(stats: YearStats): string {
 
     <div class="footer">
       <p>Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-      <p>gitrewind.dev</p>
+      <p>${escapeHtml(new URL(getAppUrl()).host)}</p>
     </div>
   </div>
 </body>
