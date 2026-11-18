@@ -5,18 +5,13 @@
 
 import type { Metadata } from 'next'
 import { FAQ_ITEMS } from './faq'
-
-const DEFAULT_SITE_URL = 'https://git-rewind.dev'
-
-function withoutTrailingSlashes(url: string): string {
-  return url.replace(/\/+$/, '')
-}
+import { getAppUrl } from './app-url'
 
 export const SITE_CONFIG = {
   name: 'Git Rewind',
   shortName: 'Git Rewind',
   description: 'Your year in code, beautifully told. A privacy-focused GitHub year-in-review that respects your data.',
-  url: withoutTrailingSlashes(process.env.NEXT_PUBLIC_APP_URL ?? '') || DEFAULT_SITE_URL,
+  url: getAppUrl(),
   locale: 'en_US',
   twitterHandle: '@mikelane',
   githubUrl: 'https://github.com/mikelane/git-rewind',
