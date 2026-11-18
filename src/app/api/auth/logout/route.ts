@@ -1,12 +1,13 @@
 import { NextResponse } from 'next/server'
 import { clearSession } from '@/lib/auth'
+import { getAppUrl } from '@/lib/app-url'
 
 export async function POST() {
   await clearSession()
-  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/`)
+  return NextResponse.redirect(`${getAppUrl()}/`)
 }
 
 export async function GET() {
   await clearSession()
-  return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/`)
+  return NextResponse.redirect(`${getAppUrl()}/`)
 }

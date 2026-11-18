@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookies } from 'next/headers'
 import { setSession } from '@/lib/auth'
 import { authLogger } from '@/lib/logger'
+import { getAppUrl } from '@/lib/app-url'
 
 export async function GET(request: NextRequest) {
   const searchParams = request.nextUrl.searchParams
@@ -16,19 +17,19 @@ export async function GET(request: NextRequest) {
   // If this is a post-installation/update redirect without code, redirect to login
   // setup_action can be 'install' (new install) or 'update' (repos added/removed)
   if ((setupAction === 'install' || setupAction === 'update') && !code) {
-    return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/api/auth/login`)
+    return NextResponse.redirect(`${getAppUrl()}/api/auth/login`)
   }
 
   // Handle OAuth errors
   if (error) {
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/?error=${encodeURIComponent(error)}`
+      `${getAppUrl()}/?error=${encodeURIComponent(error)}`
     )
   }
 
   if (!code) {
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/?error=missing_params`
+      `${getAppUrl()}/?error=missing_params`
     )
   }
 
@@ -40,7 +41,7 @@ export async function GET(request: NextRequest) {
   if (setupAction !== 'install') {
     if (!state) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/?error=missing_params`
+        `${getAppUrl()}/?error=missing_params`
       )
     }
 
@@ -50,7 +51,7 @@ export async function GET(request: NextRequest) {
     // Explicitly check for undefined/missing cookie to prevent CSRF attacks
     if (!storedState || state !== storedState) {
       return NextResponse.redirect(
-        `${process.env.NEXT_PUBLIC_APP_URL}/?error=invalid_state`
+        `${getAppUrl()}/?error=invalid_state`
       )
     }
   }
@@ -119,13 +120,13 @@ export async function GET(request: NextRequest) {
     }
 
     // Redirect to rewind page
-    const redirectUrl = `${process.env.NEXT_PUBLIC_APP_URL}/rewind`
+    const redirectUrl = `${getAppUrl()}/rewind`
     authLogger.debug(`Redirecting to: ${redirectUrl}`)
     return NextResponse.redirect(redirectUrl)
   } catch (err) {
     authLogger.error('Authentication error:', err)
     return NextResponse.redirect(
-      `${process.env.NEXT_PUBLIC_APP_URL}/?error=auth_failed`
+      `${getAppUrl()}/?error=auth_failed`
     )
   }
 }

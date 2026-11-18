@@ -1,4 +1,4 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import { escapeHtml, generateHTML } from './export'
 import type { YearStats } from './github'
 
@@ -194,6 +194,45 @@ describe('generateHTML', () => {
       // Count occurrences of unescaped script tags
       const unescapedScripts = (html.match(/<script>/g) || []).length
       expect(unescapedScripts).toBe(0)
+    })
+  })
+
+  describe('footer domain', () => {
+    afterEach(() => {
+      vi.unstubAllEnvs()
+    })
+
+    it.each([
+      ['unset', '', 'git-rewind.dev'],
+      ['https://git-rewind.dev/', 'https://git-rewind.dev/', 'git-rewind.dev'],
+      ['a localhost URL with a port', 'http://localhost:3000', 'localhost:3000'],
+      ['a preview URL', 'https://preview.example.com/', 'preview.example.com'],
+    ])('It shows the host of the app URL in the footer when NEXT_PUBLIC_APP_URL is %s', (_label, appUrl, host) => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', appUrl)
+
+      const html = generateHTML(createMinimalStats())
+
+      expect(html).toContain(`<p>${host}</p>`)
+    })
+
+    it.each([
+      ['a bare host without a scheme', 'git-rewind.dev', 'git-rewind.dev'],
+      ['a bare https scheme', 'https://', 'git-rewind.dev'],
+      ['a bare localhost host with a port', 'localhost:3000', 'git-rewind.dev'],
+    ])('It returns the default host in the footer when NEXT_PUBLIC_APP_URL is %s', (_label, appUrl, host) => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', appUrl)
+
+      const html = generateHTML(createMinimalStats())
+
+      expect(html).toContain(`<p>${host}</p>`)
+    })
+
+    it('It never shows the retired hyphenless domain', () => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
+
+      const html = generateHTML(createMinimalStats())
+
+      expect(html).not.toMatch(/gitrewind[.]dev/)
     })
   })
 })

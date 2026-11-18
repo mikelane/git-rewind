@@ -4,8 +4,7 @@
  */
 
 import type { EpilogueData } from '@/components/chapters/epilogue'
-
-const APP_URL = process.env.NEXT_PUBLIC_APP_URL || 'https://gitrewind.dev'
+import { getAppUrl } from './app-url'
 
 export interface ShareResult {
   method: 'webshare' | 'clipboard'
@@ -23,7 +22,7 @@ ${data.totalContributions.toLocaleString()} contributions
 ${data.activeDays} active days
 ${data.longestStreak} day streak
 
-Create yours at ${APP_URL}`
+Create yours at ${getAppUrl()}`
 }
 
 /**
@@ -60,7 +59,7 @@ export async function shareHighlight(data: EpilogueData): Promise<ShareResult> {
       await navigator.share({
         title: `Git Rewind ${data.year}`,
         text: shareText,
-        url: APP_URL,
+        url: getAppUrl(),
       })
       return { method: 'webshare', success: true }
     } catch {
