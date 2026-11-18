@@ -1,8 +1,13 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi, afterEach } from 'vitest'
 import robots from './robots'
 import { SITE_CONFIG } from '@/lib/seo'
 
 describe('robots', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs()
+    vi.resetModules()
+  })
+
   const rule = () => {
     const { rules } = robots()
     return Array.isArray(rules) ? rules[0] : rules
@@ -23,4 +28,14 @@ describe('robots', () => {
   it('It points to the sitemap on the site URL', () => {
     expect(robots().sitemap).toBe(`${SITE_CONFIG.url}/sitemap.xml`)
   })
+
+  it.each(['https://git-rewind.dev/', 'https://git-rewind.dev//'])(
+    'It points to the sitemap without double slashes when NEXT_PUBLIC_APP_URL is %s',
+    async (appUrl) => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', appUrl)
+      vi.resetModules()
+      const { default: freshRobots } = await import('./robots')
+      expect(freshRobots().sitemap).toBe('https://git-rewind.dev/sitemap.xml')
+    }
+  )
 })
