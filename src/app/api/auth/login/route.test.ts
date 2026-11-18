@@ -44,6 +44,24 @@ describe('GET /api/auth/login', () => {
     expect(location.searchParams.get('redirect_uri')).toBe('http://localhost:3000/api/auth/callback')
   })
 
+  it('It sends https://git-rewind.dev/api/auth/callback as redirect_uri when the app URL ends in a slash', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+
+    const response = await GET()
+
+    const location = new URL(response.headers.get('location') as string)
+    expect(location.searchParams.get('redirect_uri')).toBe('https://git-rewind.dev/api/auth/callback')
+  })
+
+  it('It sends https://git-rewind.dev/api/auth/callback as redirect_uri when the app URL is unset', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
+
+    const response = await GET()
+
+    const location = new URL(response.headers.get('location') as string)
+    expect(location.searchParams.get('redirect_uri')).toBe('https://git-rewind.dev/api/auth/callback')
+  })
+
   it('sends the same state to GitHub that it stores in the oauth-state cookie', async () => {
     const response = await GET()
 

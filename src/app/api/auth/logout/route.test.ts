@@ -32,6 +32,22 @@ describe.each([
     expect(response.headers.get('location')).toBe('http://localhost:3000/')
   })
 
+  it('It redirects to https://git-rewind.dev/ when the app URL ends in a slash', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+
+    const response = await handler()
+
+    expect(response.headers.get('location')).toBe('https://git-rewind.dev/')
+  })
+
+  it('It redirects to https://git-rewind.dev/ when the app URL is unset', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
+
+    const response = await handler()
+
+    expect(response.headers.get('location')).toBe('https://git-rewind.dev/')
+  })
+
   it('clears the session cookie', async () => {
     await handler()
 

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { randomBytes } from 'crypto'
 import { cookies } from 'next/headers'
+import { getAppUrl } from '@/lib/app-url'
 
 export async function GET() {
   const clientId = process.env.GITHUB_CLIENT_ID
@@ -29,7 +30,7 @@ export async function GET() {
   // This grants access based on what repos the user has installed the app on
   const params = new URLSearchParams({
     client_id: clientId,
-    redirect_uri: `${process.env.NEXT_PUBLIC_APP_URL}/api/auth/callback`,
+    redirect_uri: `${getAppUrl()}/api/auth/callback`,
     state,
   })
 

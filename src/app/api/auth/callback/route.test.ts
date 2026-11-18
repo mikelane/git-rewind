@@ -346,4 +346,56 @@ describe('GET /api/auth/callback', () => {
       expect(mockCookieStore.set).not.toHaveBeenCalled()
     })
   })
+
+  describe('when NEXT_PUBLIC_APP_URL ends in a slash', () => {
+    beforeEach(() => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+    })
+
+    it('It redirects to https://git-rewind.dev/rewind on success', async () => {
+      withStoredState('s')
+
+      const response = await GET(createRequest({ code: 'c', state: 's' }))
+
+      expect(locationOf(response)).toBe('https://git-rewind.dev/rewind')
+    })
+
+    it('It redirects to https://git-rewind.dev/?error=missing_params when params are missing', async () => {
+      const response = await GET(createRequest({ state: 'some-state' }))
+
+      expect(locationOf(response)).toBe('https://git-rewind.dev/?error=missing_params')
+    })
+
+    it.each([
+      ['an install without a code', { setup_action: 'install', installation_id: '1' }, 'https://git-rewind.dev/api/auth/login'],
+      ['an OAuth error', { error: 'access_denied' }, 'https://git-rewind.dev/?error=access_denied'],
+      ['an invalid state', { code: 'c', state: 'wrong' }, 'https://git-rewind.dev/?error=invalid_state'],
+    ])('It redirects to the normalized URL for %s', async (_case, params, expected) => {
+      withStoredState('right')
+
+      const response = await GET(createRequest(params))
+
+      expect(locationOf(response)).toBe(expected)
+    })
+
+    it('It redirects to https://git-rewind.dev/?error=auth_failed when the token exchange fails', async () => {
+      withStoredState('s')
+      global.fetch = vi.fn().mockResolvedValue({ ok: false, status: 401, text: () => Promise.resolve('') })
+
+      const response = await GET(createRequest({ code: 'c', state: 's' }))
+
+      expect(locationOf(response)).toBe('https://git-rewind.dev/?error=auth_failed')
+    })
+  })
+
+  describe('when NEXT_PUBLIC_APP_URL is unset', () => {
+    it('It redirects to https://git-rewind.dev/rewind on success', async () => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
+      withStoredState('s')
+
+      const response = await GET(createRequest({ code: 'c', state: 's' }))
+
+      expect(locationOf(response)).toBe('https://git-rewind.dev/rewind')
+    })
+  })
 })
