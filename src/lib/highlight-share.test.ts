@@ -181,8 +181,7 @@ describe('generateHighlightShareText', () => {
 
       const text = generateHighlightShareText(highlight)
 
-      expect(text.endsWith('\n\nhttps://git-rewind.dev')).toBe(true)
-      expect(text).not.toMatch(/https:\/\/git-rewind\.dev\/\//)
+      expect(text).toMatch(/\n\nhttps:\/\/git-rewind\.dev$/)
     })
 
     it.each(highlights)('It uses git-rewind.dev in the $type highlight when the app URL is unset', (highlight) => {
@@ -190,7 +189,7 @@ describe('generateHighlightShareText', () => {
 
       const text = generateHighlightShareText(highlight)
 
-      expect(text.endsWith('\n\nhttps://git-rewind.dev')).toBe(true)
+      expect(text).toMatch(/\n\nhttps:\/\/git-rewind\.dev$/)
     })
   })
 })
@@ -255,6 +254,10 @@ describe('shareHighlight', () => {
     })
   })
 
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('returns clipboard result when Web Share API is not available', async () => {
     const result = await shareHighlight(streakHighlight)
     expect(result.method).toBe('clipboard')
@@ -301,7 +304,6 @@ describe('shareHighlight', () => {
     await shareHighlight(streakHighlight)
 
     expect(shareFn).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://git-rewind.dev' }))
-    vi.unstubAllEnvs()
   })
 
   it('falls back to clipboard when Web Share fails', async () => {

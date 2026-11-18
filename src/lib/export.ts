@@ -7,6 +7,20 @@ import { getLanguageColor } from './constants'
 import { formatFavoriteDays } from './format-days'
 import { getAppUrl } from './app-url'
 
+const DEFAULT_APP_HOST = 'git-rewind.dev'
+
+/**
+ * Host of the configured app URL, falling back to the default host when the
+ * configured value has no scheme, is malformed, or parses with an empty host
+ */
+function getAppHost(): string {
+  try {
+    return new URL(getAppUrl()).host || DEFAULT_APP_HOST
+  } catch {
+    return DEFAULT_APP_HOST
+  }
+}
+
 /**
  * Escape HTML special characters to prevent XSS attacks
  */
@@ -263,7 +277,7 @@ export function generateHTML(stats: YearStats): string {
 
     <div class="footer">
       <p>Generated ${new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</p>
-      <p>${escapeHtml(new URL(getAppUrl()).host)}</p>
+      <p>${escapeHtml(getAppHost())}</p>
     </div>
   </div>
 </body>

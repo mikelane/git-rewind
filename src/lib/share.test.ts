@@ -53,7 +53,7 @@ describe('generateShareText', () => {
 
       const text = generateShareText(mockEpilogueData)
 
-      expect(text.endsWith('Create yours at https://git-rewind.dev')).toBe(true)
+      expect(text).toMatch(/Create yours at https:\/\/git-rewind\.dev$/)
     })
 
     it('It falls back to https://git-rewind.dev when NEXT_PUBLIC_APP_URL is unset', () => {
@@ -61,7 +61,7 @@ describe('generateShareText', () => {
 
       const text = generateShareText(mockEpilogueData)
 
-      expect(text.endsWith('Create yours at https://git-rewind.dev')).toBe(true)
+      expect(text).toMatch(/Create yours at https:\/\/git-rewind\.dev$/)
     })
   })
 })
@@ -135,6 +135,10 @@ describe('shareHighlight', () => {
     })
   })
 
+  afterEach(() => {
+    vi.unstubAllEnvs()
+  })
+
   it('returns copied result when Web Share API is not available', async () => {
     const result = await shareHighlight(mockEpilogueData)
     expect(result.method).toBe('clipboard')
@@ -152,7 +156,6 @@ describe('shareHighlight', () => {
     await shareHighlight(mockEpilogueData)
 
     expect(shareFn).toHaveBeenCalledWith(expect.objectContaining({ url: 'https://git-rewind.dev' }))
-    vi.unstubAllEnvs()
   })
 
   it('uses Web Share API when available', async () => {

@@ -215,6 +215,18 @@ describe('generateHTML', () => {
       expect(html).toContain(`<p>${host}</p>`)
     })
 
+    it.each([
+      ['a bare host without a scheme', 'git-rewind.dev', 'git-rewind.dev'],
+      ['a bare https scheme', 'https://', 'git-rewind.dev'],
+      ['a bare localhost host with a port', 'localhost:3000', 'git-rewind.dev'],
+    ])('It returns the default host in the footer when NEXT_PUBLIC_APP_URL is %s', (_label, appUrl, host) => {
+      vi.stubEnv('NEXT_PUBLIC_APP_URL', appUrl)
+
+      const html = generateHTML(createMinimalStats())
+
+      expect(html).toContain(`<p>${host}</p>`)
+    })
+
     it('It never shows the retired hyphenless domain', () => {
       vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
 
