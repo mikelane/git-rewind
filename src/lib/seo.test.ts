@@ -32,6 +32,40 @@ describe('SITE_CONFIG', () => {
     expect(freshConfig.url).toBe('https://preview.example.com')
   })
 
+  it.each([
+    ['https://git-rewind.dev/', 'https://git-rewind.dev'],
+    ['https://git-rewind.dev//', 'https://git-rewind.dev'],
+    ['https://git-rewind.dev', 'https://git-rewind.dev'],
+    ['https://preview.example.com/app/', 'https://preview.example.com/app'],
+  ])('It normalizes NEXT_PUBLIC_APP_URL %s to %s', async (input, expected) => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', input)
+    vi.resetModules()
+    const { SITE_CONFIG: freshConfig } = await import('./seo')
+    expect(freshConfig.url).toBe(expected)
+  })
+
+  it('It falls back to https://git-rewind.dev when NEXT_PUBLIC_APP_URL is only slashes', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', '/')
+    vi.resetModules()
+    const { SITE_CONFIG: freshConfig } = await import('./seo')
+    expect(freshConfig.url).toBe('https://git-rewind.dev')
+  })
+
+  it('It builds an Open Graph url without a double slash when the env URL has a trailing slash', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+    vi.resetModules()
+    const { createOpenGraph: freshOpenGraph } = await import('./seo')
+    expect(freshOpenGraph('demo', '/demo').url).toBe('https://git-rewind.dev/demo')
+  })
+
+  it('It builds a breadcrumb item without a double slash when the env URL has a trailing slash', async () => {
+    vi.stubEnv('NEXT_PUBLIC_APP_URL', 'https://git-rewind.dev/')
+    vi.resetModules()
+    const { generateBreadcrumbSchema: freshBreadcrumb } = await import('./seo')
+    const [crumb] = freshBreadcrumb([{ name: 'Demo', url: '/demo' }]).itemListElement
+    expect(crumb.item).toBe('https://git-rewind.dev/demo')
+  })
+
   it('It uses @mikelane as the twitter handle', () => {
     expect(SITE_CONFIG.twitterHandle).toBe('@mikelane')
   })
