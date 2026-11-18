@@ -215,7 +215,7 @@ describe('generateHTML', () => {
       expect(html).toContain(`<p>${host}</p>`)
     })
 
-    it('It never shows the retired gitrewind.dev domain', () => {
+    it('It never shows the retired hyphenless domain', () => {
       vi.stubEnv('NEXT_PUBLIC_APP_URL', '')
 
       const html = generateHTML(createMinimalStats())
